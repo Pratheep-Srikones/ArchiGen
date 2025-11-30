@@ -4,21 +4,33 @@ import { Cpu, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { generate_architecture } from "@/services/agent";
-import { normalizeMermaid } from "@/utils/clean_text";
+import { ArchitectureAgentRespose } from "@/types/resposes";
+import { extractData } from "@/utils/clean_text";
+import LoadingState from "@/components/LoadingState";
 
 const Home = () => {
   const [requirement, setRequirement] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleGenerate = async () => {
-    const res = await generate_architecture(requirement);
-    if (res) {
-      const results = res.data;
-      const mermaid = results[3];
-      console.log(normalizeMermaid(mermaid));
+    try {
+      let architectureData: ArchitectureAgentRespose;
+      setLoading(true);
+      const res = await generate_architecture(requirement);
+      if (res) {
+        architectureData = extractData(res.data);
+      }
+      setLoading(false);
+      navigate("/results", { state: { requirement, architectureData } });
+    } catch (error) {
+      console.error("Error generating architecture:", error);
+      setLoading(false);
     }
   };
-
+  if (loading) {
+    return <LoadingState />;
+  }
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}

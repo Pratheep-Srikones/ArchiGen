@@ -1,3 +1,5 @@
+import { ArchitectureAgentRespose } from "@/types/resposes";
+
 export function normalizeMermaid(input: string): string {
   let cleaned = input
     .replace(/^```mermaid/i, "")
@@ -15,4 +17,13 @@ export function normalizeMermaid(input: string): string {
   cleaned = cleaned.trim();
 
   return cleaned;
+}
+
+export function extractData(input: string[]): ArchitectureAgentRespose {
+  return {
+    architecture: input[0],
+    explanation: input[1],
+    techstack: input[2],
+    mermaidDiagram: normalizeMermaid(input[3]),
+  };
 }

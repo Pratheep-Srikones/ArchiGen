@@ -3,26 +3,19 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Cpu, Code, Layers, Network, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import LoadingState from "@/components/LoadingState";
-import { dummyArchitecture } from "@/data/dummyData";
+import { ArchitectureAgentRespose } from "@/types/resposes";
+import HTMLTextBox from "@/components/HTMLTextBox";
+import MermaidDiagram from "@/components/MermaidDiagram";
 
 const Results = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
   const requirement = location.state?.requirement || "";
+  const architectureData: ArchitectureAgentRespose =
+    location.state?.architectureData;
 
-  useEffect(() => {
-    // Simulate architecture generation
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (isLoading) {
-    return <LoadingState />;
+  if (!architectureData) {
+    navigate("/home");
   }
 
   return (
@@ -74,9 +67,7 @@ const Results = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-foreground leading-relaxed">
-                {dummyArchitecture.summary}
-              </p>
+              <HTMLTextBox content={architectureData.architecture} />
             </CardContent>
           </Card>
 
@@ -90,16 +81,7 @@ const Results = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {dummyArchitecture.techStack.map((tech, index) => (
-                  <div key={index} className="border-l-2 border-primary pl-4">
-                    <h4 className="font-semibold text-foreground mb-1">
-                      {tech.name}
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      {tech.reason}
-                    </p>
-                  </div>
-                ))}
+                <HTMLTextBox content={architectureData.techstack} />
               </div>
             </CardContent>
           </Card>
@@ -113,15 +95,9 @@ const Results = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="bg-surface rounded-lg border-2 border-dashed border-border h-96 flex items-center justify-center">
-                <div className="text-center">
-                  <Network className="h-12 w-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-                  <p className="text-muted-foreground">
-                    Architecture diagram placeholder
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Visual representation coming soon
-                  </p>
+              <div className="bg-surface rounded-lg border-2 border-dashed border-border w-full h-full flex items-stretch">
+                <div className="w-full h-full">
+                  <MermaidDiagram chart={architectureData.mermaidDiagram} />
                 </div>
               </div>
             </CardContent>
@@ -137,49 +113,12 @@ const Results = () => {
             </CardHeader>
             <CardContent>
               <div className="prose prose-sm max-w-none">
-                <p className="text-foreground leading-relaxed">
-                  {dummyArchitecture.reasoning}
-                </p>
+                <HTMLTextBox content={architectureData.explanation} />
               </div>
             </CardContent>
           </Card>
 
           {/* Components Breakdown */}
-          <div>
-            <h3 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-              <Layers className="h-5 w-5 text-primary" />
-              System Components
-            </h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              {dummyArchitecture.components.map((component, index) => (
-                <Card
-                  key={index}
-                  className="border-border hover:border-primary/50 transition-colors"
-                >
-                  <CardHeader>
-                    <CardTitle className="text-base">
-                      {component.name}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {component.description}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {component.technologies.map((tech, techIndex) => (
-                        <span
-                          key={techIndex}
-                          className="px-2 py-1 bg-accent text-accent-foreground text-xs rounded-md font-medium"
-                        >
-                          {tech}
-                        </span>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Actions */}

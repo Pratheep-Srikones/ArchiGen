@@ -28,6 +28,9 @@ async def query_agent(request: Request, response: Response):
 
         # Run the agent with the provided prompt and user ID
         agent_response = await run_agent(user_prompt, user_id)
+        if "error" in agent_response and agent_response["error"]:
+            response.status_code = 500
+            return {"data": None, "error": agent_response["error"], "message": "Agent processing failed."}
 
         return {"data": agent_response, "error": None, "message": "Success"}
 

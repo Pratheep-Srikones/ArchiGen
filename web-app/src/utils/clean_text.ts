@@ -19,6 +19,13 @@ export function normalizeMermaid(input: string): string {
   return cleaned;
 }
 
+export function cleanHtmlfromLLM(input: string): string {
+  const clean = input
+    .replace(/```html|```/g, "") // remove ```html and closing ```
+    .trim();
+  return clean;
+}
+
 export function extractData(input: string[]): ArchitectureAgentRespose {
   return {
     architecture: input[0],

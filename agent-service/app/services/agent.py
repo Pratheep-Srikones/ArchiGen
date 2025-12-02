@@ -14,12 +14,10 @@ import google.generativeai as genai
 # Assuming these imports exist in your project structure
 from app.config.config import config
 from app.data import prompts
-from app.utils.agent_utils import list_to_json
 
-# --- 1. Global Initialization (Do this ONCE, not per request) ---
 genai.configure(api_key= config.gemini_api_key)
 
-MODEL = "gemini-2.5-flash-lite"
+MODEL = "gemini-2.5-flash"
 # Define Sub-Agents
 prompt_agent = Agent(
     name="Prompt_Engineer_Agent",
@@ -58,22 +56,7 @@ diagram_agent = Agent(
     output_key="architecture_diagram"
 )
 
-STRICT_ROOT_AGENT_PROMPT = """
-Task Execution Order:
-Step1 → Call Prompt_Engineer_Agent(input=user_prompt) → returns refined_prompt
-Step2 → Call System_Architect_Agent(input=refined_prompt) → returns architecture_design
-Step3 → Call Architecture_Explainer_Agent(input=architecture_design) → returns explained_architecture
-Step4 → Call Tech_Stack_Suggester_Agent(input=explained_architecture) → returns tech_stack_suggestion
-Step5 → Call Diagram_Generator_Agent(input=architecture_design) → returns architecture_diagram
 
-FINAL OUTPUT MUST BE A JSON OBJECT:
-{
-  "main_architecture_design": "...",
-  "elaborated_architecture": "...",
-  "suggested_tech_stack": "...",
-  "diagram_mermaid_js": "..."
-}
-"""
 generation_pipeline_agent = SequentialAgent(
     name="Generation_Pipeline_Agent",
     sub_agents=[
@@ -87,32 +70,6 @@ generation_pipeline_agent = SequentialAgent(
 )
 # Define Root Agent with Tools
 root_agent = generation_pipeline_agent
-
-
-# --- 2. Helper Functions ---
-
-def clean_and_parse_json(text: str) -> dict:
-    if not text:
-        return {"error": "LLM returned empty response"}
-
-    # Remove markdown fences if present (e.g., ```json ... ```)
-    text = re.sub(r"```(\w+)?", "", text).strip()
-
-    try:
-        return json.loads(text)
-    except json.JSONDecodeError:
-        # Fallback: Try to find the first '{' and last '}'
-        try:
-            s, e = text.find("{"), text.rfind("}")
-            if s != -1 and e != -1:
-                return json.loads(text[s:e+1])
-        except Exception:
-            pass
-            
-    return {"error": "JSON Parse Failed", "raw": text}
-
-
-# --- 3. Request Handler ---
 
 async def run_agent(user_prompt: str, user_id: str):
     try:
@@ -164,6 +121,7 @@ async def run_agent(user_prompt: str, user_id: str):
 
     except Exception as e:
         print("========= ERROR DURING AGENT RUN =========")
-        traceback.print_exc()
+        #traceback.print_exc()
+        print(str(e))
         return {"error": "Fatal execution failure", "details": str(e)}
 

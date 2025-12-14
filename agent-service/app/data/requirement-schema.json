@@ -1,0 +1,24 @@
+{
+  "project_name": "String",
+  "user_roles": [
+    {
+      "role": "String (e.g., Admin, End-User)",
+      "description": "String"
+    }
+  ],
+  "functional_requirements": [
+    {
+      "id": "String (e.g., FR-01)",
+      "requirement": "String",
+      "priority": "String (High/Medium/Low)",
+      "justification": "String (Why is this critical for the MVP?)"
+    }
+  ],
+  "non_functional_requirements": [
+    {
+      "category": "String (e.g., Security, Scalability)",
+      "requirement": "String",
+      "justification": "String"
+    }
+  ]
+}

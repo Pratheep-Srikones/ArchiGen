@@ -1,0 +1,18 @@
+{
+  "frontend": {
+    "technology": "String",
+    "justification": "String"
+  },
+  "backend": {
+    "technology": "String",
+    "justification": "String"
+  },
+  "database": {
+    "technology": "String",
+    "justification": "String"
+  },
+  "infrastructure": {
+    "technology": "String",
+    "justification": "String"
+  }
+}

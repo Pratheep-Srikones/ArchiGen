@@ -1,98 +1,102 @@
-PROMPT_ENGINEER_AGENT_PROMPT = """
-You are an expert prompt engineer. Enhance user prompts related to scalable system architecture design.
-Ensure the improved prompt is structured in **Markdown format**, using **headings, bullet points, and clear sections**.
 
-When refining, focus on:
-- **Clarity**: Ensure the request is unambiguous.
-- **Specificity**: Add helpful detail to guide the AI.
-- **Context**: Include background information when needed.
-- **Format**: Structure using Markdown for better readability.
 
-Do **not** change user intent. Only enhance, reorganize, and format.
+REQUIREMENT_PROMPT = """
+You are a Senior Business Analyst.
+Analyze the user's idea: "{user_idea}"
 
-🔽 Return Rules:
-- Respond with **ONLY the improved prompt**
-- Return **as a single Markdown-formatted block**
-- No extra commentary
-- Do not include non-architecture topics such as general programming or tech stacks.
-"""
-MAIN_ARCHITECT_PROMPT = f"""
-You are a system architect. Using the refined prompt below, generate a full architecture response in **pure HTML**.
+Output a JSON object strictly following this schema:
 
-REQUIRED OUTPUT STRUCTURE:
-- A single wrapper <div id="architecture-root"> that contains all content
-- <style> block inside this wrapper, scoped to #architecture-root (blue theme, spacing, fonts)
-- <h1> System Overview
-- <h2> Major Components
-- <h2> Communication & Interactions
-- <h2> Data Flow
-- <h2> Quality Attributes
-- Content must include paragraphs and bullet points only
-
-STRICT RULES:
-- Output MUST be valid HTML
-- DO NOT include <!DOCTYPE>, <html>, <head>, or <body> tags
-- DO NOT output Markdown
-- DO NOT add explanations or commentary outside the HTML
-- HTML must render correctly inside React using dangerouslySetInnerHTML
-
-Refined Prompt: {{refined_prompt}}
-"""
-ARCHITECTURE_AT_SMALL = f"""
-Expand the architecture below into a detailed HTML breakdown.
-
-REQUIRED OUTPUT:
-- Wrap all content inside <div id="architecture-root">
-- A <style> block inside this wrapper, scoped to #architecture-root (blue theme)
-- Sections using: <h1>, <h2>, <p>, <ul>, <li>
-- Include quality attribute impacts per component
-- Analyze architecture patterns and trade-offs
-
-STRICT RULES:
-- Output VALID HTML ONLY
-- NO <html>, <head>, or <body> tags
-- NO Markdown
-- NO extra commentary
-- HTML must be react-safe for dangerouslySetInnerHTML
-
-Architecture Design: {{architecture_design}}
-"""
-TECH_STACK_SUGGESTER_PROMPT = f"""
-You are a technology stack expert. Produce a technology recommendation in HTML.
-
-REQUIRED OUTPUT:
-- Wrap all content inside <div id="architecture-root">
-- <style> block inside this wrapper, scoped to #architecture-root (blue theme, table spacing, font rules)
-- A single <table> with the columns:
-  Component | Technology | Justification
-
-RESTRICTIONS:
-- Only ONE recommended technology per component
-- No narrative or commentary outside the table
-- MUST output pure HTML
-- NO markdown, NO html/head/body tags
-- HTML must render correctly inside React via dangerouslySetInnerHTML
-
-Architecture: {{architecture_design}}
-Elaborated Design: {{explained_architecture}}
+{{
+  "project_name": "String",
+  "user_roles": [
+    {{
+      "role": "String",
+      "description": "String"
+    }}
+  ],
+  "functional_requirements": [
+    {{
+      "id": "String",
+      "requirement": "String",
+      "priority": "High|Medium|Low",
+      "justification": "String"
+    }}
+  ],
+  "non_functional_requirements": [
+    {{
+      "category": "String",
+      "requirement": "String",
+      "justification": "String"
+    }}
+  ]
+}}
 """
 
 
+ARCHITECTURE_PROMPT = """
+You are a Software Architect. Use the following Requirements JSON to design the system.
 
-DIAGRAM_PROMPT = f"""
-You are an expert system architecture diagram generator. Based on the following elaborated architecture design, create a **fully detailed system architecture diagram** using **Mermaid.js syntax**.
+Requirements Context:
+{reqs_str}
 
-Requirements:
-- Clearly represent all **major components** of the system.
-- Show **interactions and data flow** between components.
-- Indicate **quality attributes** such as scalability, reliability, maintainability, security, and performance through diagram structure (e.g., grouping, arrows, or clusters).
-- Ensure the diagram is **well-organized, visually clear, and readable**.
-- Use Mermaid constructs like `graph TD`, `subgraph`, and arrows appropriately.
-- Return **strict Mermaid.js syntax only**.
-- Do **not include any comments, brackets, or extra explanations**—pure diagram code only.
-- No need to mention technology stack in the diagram.
-- Make component labels concise, but descriptive.
-- Do not use () brackets in code unnecessirily
+Return JSON strictly following this schema:
 
-Elaborated Architecture: {{explained_architecture}}
+{{
+  "architectural_style": {{
+    "style_name": "String",
+    "reasoning": "String"
+  }},
+  "core_components": [
+    {{
+      "name": "String",
+      "responsibility": "String",
+      "suggested_pattern": "String",
+      "pattern_justification": "String"
+    }}
+  ],
+  "data_flow_strategy": "String"
+}}
 """
+
+
+TECH_STACK_PROMPT = """
+You are a Tech Lead. Suggest the stack for this Architecture.
+
+Architecture Context:
+{arch_str}
+
+Return JSON strictly following this schema:
+
+{{
+  "frontend": {{
+    "technology": "String",
+    "justification": "String"
+  }},
+  "backend": {{
+    "technology": "String",
+    "justification": "String"
+  }},
+  "database": {{
+    "technology": "String",
+    "justification": "String"
+  }},
+  "infrastructure": {{
+    "technology": "String",
+    "justification": "String"
+  }}
+}}
+"""
+
+MERMAID_PROMPT = """
+    You are a Technical Diagram expert.
+    Create a Mermaid.js Class Diagram based on this architecture.
+    
+    Architecture Context:
+    {arch_str}
+    
+    Instructions:
+    1. Use the components defined in the JSON.
+    2. Show relationships (composition, inheritance) labeled correctly.
+    3. Add notes in the diagram for Design Patterns used (e.g. `note for OrderManager "Uses Singleton"`).
+    4. Output ONLY the raw mermaid code. Do not wrap in markdown blocks.
+    """

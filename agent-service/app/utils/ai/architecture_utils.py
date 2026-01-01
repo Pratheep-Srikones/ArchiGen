@@ -16,13 +16,11 @@ def get_requirements(user_idea):
         prompt,
         generation_config=genai.GenerationConfig(
             response_mime_type="application/json", 
-            # You can also pass a response_schema object here for strict typing
         )
     )
     return json.loads(response.text)
 
 def get_architecture(requirements_json):
-    # We pass the PREVIOUS JSON output as context
     reqs_str = json.dumps(requirements_json, indent=2)
     
     prompt = prompts.ARCHITECTURE_PROMPT.format(reqs_str=reqs_str)
@@ -50,6 +48,5 @@ def get_mermaid_code(architecture_json):
     prompt = prompts.MERMAID_PROMPT.format(arch_str=arch_str)
     
     response = model.generate_content(prompt)
-    # Clean up if the model adds markdown backticks by accident
     clean_code = response.text.replace("```mermaid", "").replace("```", "").strip()
     return clean_code

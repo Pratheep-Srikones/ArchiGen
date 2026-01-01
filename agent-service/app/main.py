@@ -11,6 +11,7 @@ from fastapi import Request
 
 from app.exceptions.architecture_exceptions import InvalidInputError, AIServiceError, ArchitectureError
 from app.routers.ai_routes import router as ai_router
+from app.routers.chat_routes import router as chat_router
 
 allowed_origins = ["http://localhost:8081"]
 
@@ -60,6 +61,7 @@ async def architecture_base_handler(request: Request, exc: ArchitectureError):
     )
 
 app.include_router(ai_router,prefix="/ai")
+app.include_router(chat_router,prefix="/ai")
 
 @app.get("/")
 async def root():

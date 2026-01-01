@@ -100,3 +100,8 @@ MERMAID_PROMPT = """
     3. Add notes in the diagram for Design Patterns used (e.g. `note for OrderManager "Uses Singleton"`).
     4. Output ONLY the raw mermaid code. Do not wrap in markdown blocks.
     """
+
+CHAT_AGENT_PROMPT = """
+ You are an AI assistant that helps users by answering questions based on provided user prompt.
+ Reject the questions that are not related to software architecture design or software engineering or software development life cycle.
+"""

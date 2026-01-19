@@ -8,123 +8,379 @@ import {
 } from "lucide-react";
 import MermaidDiagram from "../components/MermaidDiagram";
 import ChatNavbar from "../components/ChatNavbar";
+import { getArchitectureResponse } from "@/services/ai";
+import type { ProjectData } from "@/types/responses";
 
 // Mock response data based on the schema
-const MOCK_RESPONSE = {
+const MOCK = {
   data: {
     requirements: {
-      project_name: "E-Commerce Microservices Platform",
+      project_name: "Gmail Clone",
+
       user_roles: [
         {
-          role: "Customer",
-          description: "Browses products, manages cart, places orders.",
+          role: "End User",
+
+          description:
+            "Individuals who will use the application to send, receive, organize, and manage emails.",
         },
+
         {
-          role: "Admin",
-          description: "Manages inventory, views analytics, handles users.",
+          role: "Administrator",
+
+          description:
+            "Manages user accounts, system settings, and monitors application performance.",
         },
-        { role: "Vendor", description: "Uploads products, tracks sales." },
       ],
+
       functional_requirements: [
         {
-          id: "FR-01",
-          requirement: "User Authentication & Authorization",
+          id: "FR001",
+
+          requirement: "User Authentication and Authorization",
+
           priority: "High",
-          justification: "Security foundation.",
+
+          justification:
+            "Essential for secure access to user data and preventing unauthorized use.",
         },
+
         {
-          id: "FR-02",
-          requirement: "Product Catalog Search",
+          id: "FR002",
+
+          requirement: "Email Composing and Sending",
+
           priority: "High",
-          justification: "Core discovery feature.",
+
+          justification:
+            "Core functionality of an email client. Users must be able to create and send emails.",
         },
+
         {
-          id: "FR-03",
-          requirement: "Order Processing",
+          id: "FR003",
+
+          requirement: "Email Receiving and Displaying",
+
           priority: "High",
-          justification: "Revenue generation.",
+
+          justification:
+            "Core functionality. Users need to see incoming emails.",
+        },
+
+        {
+          id: "FR004",
+
+          requirement: "Email Inbox Management",
+
+          priority: "High",
+
+          justification:
+            "Users need to organize and manage their emails (e.g., marking as read/unread, starring).",
+        },
+
+        {
+          id: "FR005",
+
+          requirement: "Email Search functionality",
+
+          priority: "High",
+
+          justification:
+            "Crucial for users to find specific emails quickly within a potentially large mailbox.",
+        },
+
+        {
+          id: "FR006",
+
+          requirement: "Folder/Label Creation and Management",
+
+          priority: "Medium",
+
+          justification:
+            "Enables users to categorize and organize their emails beyond the basic inbox/sent structure.",
+        },
+
+        {
+          id: "FR007",
+
+          requirement: "Drafts Saving",
+
+          priority: "Medium",
+
+          justification:
+            "Allows users to save emails they are working on but not yet ready to send.",
+        },
+
+        {
+          id: "FR008",
+
+          requirement: "Spam Filtering",
+
+          priority: "Medium",
+
+          justification:
+            "Improves user experience by reducing clutter and potential security threats.",
+        },
+
+        {
+          id: "FR009",
+
+          requirement: "Attachment Handling (upload/download)",
+
+          priority: "High",
+
+          justification: "Essential for modern email communication.",
+        },
+
+        {
+          id: "FR010",
+
+          requirement: "User Profile Management",
+
+          priority: "Low",
+
+          justification:
+            "Allows users to update their personal information and preferences.",
         },
       ],
+
       non_functional_requirements: [
         {
-          category: "Scalability",
-          requirement: "Handle 10k concurrent users",
-          justification: "Expected peak traffic.",
+          category: "Performance",
+
+          requirement:
+            "Emails should be sent and received within 5 seconds under normal network conditions.",
+
+          justification: "Ensures a responsive and efficient user experience.",
         },
+
         {
-          category: "Availability",
-          requirement: "99.9% Uptime",
-          justification: "Business continuity.",
+          category: "Scalability",
+
+          requirement:
+            "The system should be able to handle a growing number of users and emails without significant degradation in performance.",
+
+          justification:
+            "Necessary for the long-term viability and growth of the application.",
+        },
+
+        {
+          category: "Security",
+
+          requirement:
+            "All user data, including emails and personal information, must be encrypted both in transit and at rest.",
+
+          justification:
+            "Protects sensitive user information from unauthorized access and breaches.",
+        },
+
+        {
+          category: "Usability",
+
+          requirement:
+            "The user interface should be intuitive and easy to navigate, requiring minimal training for new users.",
+
+          justification: "Enhances user adoption and satisfaction.",
+        },
+
+        {
+          category: "Reliability",
+
+          requirement:
+            "The application should have an uptime of at least 99.9%.",
+
+          justification:
+            "Ensures consistent availability of the email service.",
+        },
+
+        {
+          category: "Maintainability",
+
+          requirement:
+            "The codebase should be well-structured, documented, and follow coding standards to facilitate future updates and bug fixes.",
+
+          justification:
+            "Reduces the cost and effort of ongoing maintenance and development.",
         },
       ],
     },
+
     architecture: {
       architectural_style: {
-        style_name: "Event-Driven Microservices",
+        style_name: "Microservices Architecture",
+
         reasoning:
-          "Allows independent scaling of catalog and order services, and asynchronous processing for robustness.",
+          "Given the project name 'Gmail Clone' and the diverse functionalities (authentication, email sending/receiving, search, etc.) along with scalability and maintainability NFRs, a microservices architecture is ideal. It allows for independent development, deployment, and scaling of different services (e.g., an authentication service, an email processing service, a search service), enhancing agility and resilience. This aligns well with the 'Gmail Clone' scope, which implies a feature-rich application that can evolve over time.",
       },
+
       core_components: [
         {
+          name: "User Authentication Service",
+
+          responsibility:
+            "Handles user registration, login, logout, token generation and validation, and role-based access control (FR001).",
+
+          suggested_pattern: "Command Query Responsibility Segregation (CQRS)",
+
+          pattern_justification:
+            "Separates the read (querying user details for login) and write (user registration, password changes) operations, which can have different performance and scaling needs. This aligns with FR001 and general security principles.",
+        },
+
+        {
+          name: "Email Service",
+
+          responsibility:
+            "Manages email composing, sending (FR002), receiving (FR003), storing, and retrieval. Also handles attachment management (FR009) and drafts (FR007).",
+
+          suggested_pattern: "Event Sourcing",
+
+          pattern_justification:
+            "Emails are inherently stateful and transactional. Event sourcing can provide an immutable log of all email-related events (sent, received, read, deleted), which aids in auditing, debugging, and rebuilding mailbox states. It also supports scalability for high email volumes.",
+        },
+
+        {
+          name: "Inbox Management Service",
+
+          responsibility:
+            "Handles email organization features like marking as read/unread, starring (FR004), and potentially managing folder/label associations (FR006).",
+
+          suggested_pattern: "Repository Pattern",
+
+          pattern_justification:
+            "Provides an abstraction layer over the data storage for emails, allowing the service to focus on managing the metadata and state of emails within a user's mailbox without being tied to a specific database implementation. This facilitates easier updates to storage or querying mechanisms.",
+        },
+
+        {
+          name: "Search Service",
+
+          responsibility:
+            "Provides powerful search capabilities across all emails based on keywords, sender, subject, etc. (FR005).",
+
+          suggested_pattern:
+            "Microservice with dedicated search index (e.g., Elasticsearch)",
+
+          pattern_justification:
+            "Full-text search is a specialized and resource-intensive operation. Dedicating a service with an optimized search index (like Elasticsearch) allows for high-performance search independent of the primary email storage, meeting FR005's 'crucial' requirement.",
+        },
+
+        {
+          name: "Spam Filtering Service",
+
+          responsibility:
+            "Analyzes incoming emails to identify and flag/quarantine spam (FR008).",
+
+          suggested_pattern: "Observer Pattern",
+
+          pattern_justification:
+            "The Spam Filtering Service can 'observe' incoming emails from the Email Service. When a new email arrives, it's processed by the spam filter. The result (e.g., marked as spam, quarantined) can then trigger subsequent actions by the Email Service or Inbox Management Service.",
+        },
+
+        {
+          name: "User Profile Service",
+
+          responsibility:
+            "Manages user profile information and preferences (FR010).",
+
+          suggested_pattern: "CRUD (Create, Read, Update, Delete)",
+
+          pattern_justification:
+            "A straightforward pattern suitable for managing relatively static user data. This service will be simpler than others, reflecting the 'Low' priority of FR010.",
+        },
+
+        {
           name: "API Gateway",
-          responsibility: "Request routing, auth termination",
-          suggested_pattern: "BFF (Backend for Frontend)",
-          pattern_justification: "Optimized responses for different clients.",
-        },
-        {
-          name: "Order Service",
-          responsibility: "Order lifecycle management",
-          suggested_pattern: "Saga Pattern",
-          pattern_justification: "Distributed transactions across services.",
-        },
-        {
-          name: "Inventory Service",
-          responsibility: "Stock management",
-          suggested_pattern: "CQRS",
-          pattern_justification: "High read/write discrepancy management.",
+
+          responsibility:
+            "Single entry point for all client requests, routing them to appropriate microservices. Handles cross-cutting concerns like authentication, rate limiting, and logging.",
+
+          suggested_pattern:
+            "Backend for Frontend (BFF) if multiple client types, otherwise standard API Gateway.",
+
+          pattern_justification:
+            "Essential in a microservices architecture to provide a unified interface to clients and manage complexity. It also helps in offloading common tasks from individual microservices.",
         },
       ],
+
       data_flow_strategy:
-        "Asynchronous messaging via Kafka for inter-service communication; Synchronous REST/gRPC for user-facing actions.",
+        "Asynchronous Communication via Message Queues (e.g., Kafka, RabbitMQ) and Synchronous Communication via RESTful APIs or gRPC for direct requests. Asynchronous communication is preferred for inter-service communication where immediate response is not critical (e.g., email processing, spam filtering notifications), aligning with NFRs for performance and scalability. Synchronous communication will be used for direct client-service interactions via the API Gateway and for operations requiring immediate results, like user authentication checks.",
     },
+
     tech_stack: {
-      Frontend: {
-        technology: "Next.js",
-        justification: "SSR for SEO and performance.",
+      frontend: {
+        technology: "React.js with TypeScript",
+
+        justification:
+          "React.js is a popular and robust JavaScript library for building user interfaces, well-suited for complex, dynamic applications like a Gmail clone. TypeScript adds static typing, improving code quality, maintainability, and developer productivity, which is crucial for a large microservices-based project.",
       },
-      Backend: {
-        technology: "Go (Golang)",
-        justification: "High concurrency and low latency.",
+
+      backend: {
+        technology:
+          "Node.js (with Express.js) or Go (with Gin/Echo) for most services, Python (with Flask/FastAPI) for Search/Spam Filtering, Java (with Spring Boot) for Auth Service",
+
+        justification:
+          "Node.js/Go offers excellent performance for I/O-bound tasks and microservices. Python's rich ecosystem is beneficial for machine learning tasks in Spam Filtering and text processing in Search. Java/Spring Boot is robust for complex authentication logic and enterprise-grade features. This polyglot approach allows leveraging the best tool for each service's specific needs.",
       },
-      Database: {
-        technology: "PostgreSQL & Redis",
-        justification: "Reliable relational data + fast caching.",
+
+      database: {
+        technology:
+          "PostgreSQL for User Auth/Profile, MongoDB for Email Service (document storage), Elasticsearch for Search Service, Redis for Caching/Session Management",
+
+        justification:
+          "PostgreSQL provides ACID compliance for user data. MongoDB's flexible schema is ideal for evolving email structures and attachments. Elasticsearch is purpose-built for powerful full-text search. Redis offers high-performance caching and session storage, crucial for responsiveness.",
       },
-      "Message Broker": {
-        technology: "Apache Kafka",
-        justification: "High throughput event streaming.",
+
+      infrastructure: {
+        technology:
+          "Kubernetes for Orchestration, Docker for Containerization, Kafka for Message Queuing, Nginx/Envoy for API Gateway, Prometheus/Grafana for Monitoring",
+
+        justification:
+          "Kubernetes provides robust container orchestration, auto-scaling, and resilience for microservices. Docker ensures consistent deployment environments. Kafka handles asynchronous event-driven communication between services. Nginx/Envoy acts as an efficient API Gateway. Prometheus and Grafana offer comprehensive monitoring and alerting capabilities.",
       },
     },
-    mermaid_code: `
-    graph TD
-        Client[Client Apps] -->Gateway[API Gateway]
-        Gateway --> Auth[Auth Service]
-        Gateway --> Catalog[Catalog Service]
-        Gateway --> Order[Order Service]
-        
-        Order -->|Order Created| Broker[Kafka/Event Bus]
-        Broker --> Inventory[Inventory Service]
-        Broker --> Notification[Notification Service]
-        
-        Catalog --> DB1[(Catalog DB)]
-        Order --> DB2[(Order DB)]
-        Inventory --> DB3[(Inventory DB)]
-    `,
+
+    mermaid_code: `graph TD
+    Client((Client)) --> API_Gateway
+    API_Gateway[API Gateway] --> User_Management_Service
+    API_Gateway --> Project_File_Management_Service
+    API_Gateway --> Version_Control_Service
+    API_Gateway --> Code_Analysis_Service
+
+    User_Management_Service[User Management Service]
+    Project_File_Management_Service[Project & File Management Service]
+    Real_time_Collaboration_Service[Real-time Collaboration Service]
+    Version_Control_Service[Version Control Service]
+    Code_Analysis_Service[Code Analysis Service]
+    WebSockets_Server[WebSockets Server]
+
+    Client --> WebSockets_Server
+
+    Project_File_Management_Service -- Events --> Real_time_Collaboration_Service
+    Real_time_Collaboration_Service -- Broadcasts --> WebSockets_Server
+    WebSockets_Server -- Pushes Updates --> Client
+
+    Version_Control_Service -- Events --> Project_File_Management_Service
+    Version_Control_Service -- Events --> Real_time_Collaboration_Service
+
+    User_Management_Service -- Authenticates/Authorizes --> API_Gateway
+
+    note for User_Management_Service "API Gateway, CQRS"
+    note for Project_File_Management_Service "Repository Pattern"
+    note for Real_time_Collaboration_Service "Observer Pattern, Pub/Sub"
+    note for Version_Control_Service "Command Pattern, Saga Pattern"
+    note for Code_Analysis_Service "Strategy Pattern, Facade Pattern"
+    note for API_Gateway "API Gateway"
+    note for WebSockets_Server "Pub/Sub"
+`,
   },
+
+  message: "Architecture generated successfully",
+
+  error: null,
 };
 
 const STEPS = [
   "Analyzing requirements",
+  "Analyzing user roles",
   "Designing architecture",
   "Drawing diagram",
   "Suggesting tech stack",
@@ -136,11 +392,30 @@ const ChatPage = () => {
     "idle"
   );
   const [currentStep, setCurrentStep] = useState(0);
+  const [architectureData, setArchitectureData] = useState<ProjectData>(
+    MOCK.data
+  );
 
-  const handleSend = () => {
+  const handleMermaidCodeSave = (newCode: string) => {
+    setArchitectureData((prev) => ({
+      ...prev,
+      mermaid_code: newCode,
+    }));
+  };
+  const handleSend = async () => {
     if (!prompt.trim()) return;
     setStatus("loading");
     setCurrentStep(0);
+    try {
+      const data = await getArchitectureResponse(prompt);
+      setArchitectureData(data.data);
+      console.log("Received architecture data:", data);
+      console.log("architectureData state:", architectureData);
+    } catch (error) {
+      console.error("Error generating architecture:", error);
+      setStatus("idle");
+    }
+    setStatus("completed");
   };
 
   useEffect(() => {
@@ -151,11 +426,10 @@ const ChatPage = () => {
             return prev + 1;
           } else {
             clearInterval(interval);
-            setTimeout(() => setStatus("completed"), 1000); // Finish after last step
             return prev;
           }
         });
-      }, 1500); // 1.5s per step
+      }, 5000); // 5s per step
       return () => clearInterval(interval);
     }
   }, [status]);
@@ -246,9 +520,9 @@ const ChatPage = () => {
       user_roles,
       functional_requirements,
       non_functional_requirements,
-    } = MOCK_RESPONSE.data.requirements;
+    } = architectureData.requirements;
     const { architectural_style, core_components, data_flow_strategy } =
-      MOCK_RESPONSE.data.architecture;
+      architectureData.architecture;
 
     return (
       <main className="flex-1 container mx-auto p-6 space-y-8 max-w-6xl">
@@ -283,7 +557,7 @@ const ChatPage = () => {
                     key={i}
                     className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg"
                   >
-                    <div className="w-2 h-2 mt-2 rounded-full bg-blue-500 flex-shrink-0" />
+                    <div className="w-2 h-2 mt-2 rounded-full bg-blue-500 shrink-0" />
                     <div>
                       <span className="font-semibold text-gray-800 block">
                         {role.role}
@@ -382,7 +656,10 @@ const ChatPage = () => {
                 System Diagram
               </h3>
               <div className="flex-1 flex items-center justify-center bg-gray-50 rounded-lg p-2">
-                <MermaidDiagram code={MOCK_RESPONSE.data.mermaid_code} />
+                <MermaidDiagram
+                  code={architectureData.mermaid_code}
+                  saveEditedCode={handleMermaidCodeSave}
+                />
               </div>
             </div>
           </div>
@@ -413,12 +690,12 @@ const ChatPage = () => {
         </section>
 
         {/* Tech Stack */}
-        <section className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-xl shadow-lg p-8 text-white">
+        <section className="bg-linear-to-r from-gray-900 to-gray-800 rounded-xl shadow-lg p-8 text-white">
           <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
             Recommended Tech Stack
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {Object.entries(MOCK_RESPONSE.data.tech_stack).map(
+            {Object.entries(architectureData.tech_stack).map(
               ([category, details]: [string, any], i) => (
                 <div key={i} className="space-y-2">
                   <div className="text-gray-400 text-xs uppercase tracking-wider">

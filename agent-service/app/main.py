@@ -13,7 +13,7 @@ from app.exceptions.architecture_exceptions import InvalidInputError, AIServiceE
 from app.routers.ai_routes import router as ai_router
 from app.routers.chat_routes import router as chat_router
 
-allowed_origins = ["http://localhost:8081"]
+allowed_origins = ["http://localhost:5173"]
 
 
 

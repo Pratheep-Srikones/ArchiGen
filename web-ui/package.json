@@ -16,6 +16,7 @@
     "@mui/material": "^7.3.6",
     "@radix-ui/react-navigation-menu": "^1.2.14",
     "@tailwindcss/vite": "^4.1.18",
+    "axios": "^1.13.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "emotion": "^11.0.0",
@@ -24,12 +25,13 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.10.1",
+    "react-x-mermaid": "^0.0.10",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
-    "@types/node": "^24.10.1",
+    "@types/node": "^24.10.9",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",

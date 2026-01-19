@@ -88,18 +88,16 @@ Return JSON strictly following this schema:
 """
 
 MERMAID_PROMPT = """
-    You are a Technical Diagram expert.
-    Create a Mermaid.js Class Diagram based on this architecture.
-    
-    Architecture Context:
-    {arch_str}
-    
-    Instructions:
-    1. Use the components defined in the JSON.
-    2. Show relationships (composition, inheritance) labeled correctly.
-    3. Add notes in the diagram for Design Patterns used (e.g. `note for OrderManager "Uses Singleton"`).
-    4. Output ONLY the raw mermaid code. Do not wrap in markdown blocks.
-    """
+Task: Convert the provided architecture JSON into a Mermaid.js Diagram.
+Architecture Context: {arch_str}
+Output Requirements:
+- Format: High Level Architecture Diagram
+- Content: Use the components, methods, and patterns NO need to provide notes.
+- Syntax: Use standard Mermaid arrows (--> or --). Use `note for ClassName "Pattern"`.
+- Constraints: NO markdown blocks (```). NO introductory text. NO closing comments. NO escaped characters like \\n.
+- Line endings: Use actual line breaks, not literal backslashes.
+- Please do not add note for any components (like note for Database "Relational DB") UNDER ANY CIRCUMSTANCES.
+"""
 
 CHAT_AGENT_PROMPT = """
  You are an AI assistant that helps users by answering questions based on provided user prompt.

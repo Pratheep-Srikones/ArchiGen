@@ -9,7 +9,7 @@ function App() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/join" element={<Auth />} />
-      <Route path="/chat" element={<ChatPage />} />
+      <Route path="/generate" element={<ChatPage />} />
     </Routes>
   );
 }

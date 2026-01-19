@@ -5,9 +5,11 @@ import {
   Sparkles,
   CheckCircle2,
   Circle,
+  Bot,
 } from "lucide-react";
 import MermaidDiagram from "../components/MermaidDiagram";
 import ChatNavbar from "../components/ChatNavbar";
+import ChatBot from "../components/ChatBot";
 import { getArchitectureResponse } from "@/services/ai";
 import type { ProjectData } from "@/types/responses";
 
@@ -716,10 +718,25 @@ const ChatPage = () => {
     );
   };
 
+  const [isChatBotOpen, setIsChatBotOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <ChatNavbar />
       {renderContent()}
+
+      {/* Mini Assistant Button */}
+      <button
+        onClick={() => setIsChatBotOpen(true)}
+        className="fixed bottom-6 right-6 px-4 py-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 hover:scale-105 transition-all flex items-center gap-2 z-40"
+        title="Open Mini Assistant"
+      >
+        <Bot className="w-5 h-5" />
+        <span className="font-medium">Mini Assistant</span>
+      </button>
+
+      {/* ChatBot Sidebar */}
+      <ChatBot isOpen={isChatBotOpen} onClose={() => setIsChatBotOpen(false)} />
     </div>
   );
 };

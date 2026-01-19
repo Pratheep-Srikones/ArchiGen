@@ -1,9 +1,11 @@
-from google.adk.tools import ToolContext
+def save_architecture_decision(decision_name: str, technology_choice: str):
+    """
+    Saves a specific software architecture decision to the session state.
 
-def save_architecture_decision(context, category: str, decision: str) -> str:
-    try:
-      key = f"user:arch_decision:{category.lower()}"
-      context.session.state[key] = decision
-      return f"Success: Recorded that {category} will be handled by {decision}."
-    except Exception as e:
-      return f"Error: Could not save the architecture decision due to: {str(e)}"
+    Args:
+        decision_name: The category or component (e.g., 'database', 'frontend_framework').
+        technology_choice: The specific tool or tech chosen (e.g., 'PostgreSQL', 'React').
+    """
+    # Note: Inside the agent framework, this tool will need to return 
+    # the modification to the state.
+    return {f"user:arch_decision:{decision_name}": technology_choice}

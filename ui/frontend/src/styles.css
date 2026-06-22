@@ -1,0 +1,171 @@
+@import "tailwindcss" source(none);
+@import "tw-animate-css";
+
+@source "../src";
+
+@theme inline {
+  --color-cream: #f7f4ed;
+  --color-off-white: #fcfbf8;
+  --color-charcoal: #1c1c1c;
+  --color-charcoal-83: rgba(28, 28, 28, 0.83);
+  --color-charcoal-82: rgba(28, 28, 28, 0.82);
+  --color-charcoal-70: rgba(28, 28, 28, 0.7);
+  --color-charcoal-60: rgba(28, 28, 28, 0.6);
+  --color-charcoal-40: rgba(28, 28, 28, 0.4);
+  --color-charcoal-30: rgba(28, 28, 28, 0.3);
+  --color-charcoal-20: rgba(28, 28, 28, 0.2);
+  --color-charcoal-04: rgba(28, 28, 28, 0.04);
+  --color-charcoal-03: rgba(28, 28, 28, 0.03);
+  --color-muted: #5f5f5d;
+  --color-border-passive: #eceae4;
+  --color-border-interactive: rgba(28, 28, 28, 0.4);
+  --color-blueprint: #2563eb;
+  --color-blueprint-light: rgba(37, 99, 235, 0.08);
+  --color-blueprint-muted: rgba(37, 99, 235, 0.3);
+  --color-blueprint-border: rgba(37, 99, 235, 0.25);
+  --color-success: #16a34a;
+  --color-error: #dc2626;
+
+  --color-background: var(--color-cream);
+  --color-foreground: var(--color-charcoal);
+  --color-border: var(--color-border-passive);
+  --color-ring: rgba(59, 130, 246, 0.5);
+
+  --font-sans: "Camera Plain Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+
+  --shadow-button-inset:
+    rgba(255, 255, 255, 0.2) 0px 0.5px 0px 0px inset, rgba(0, 0, 0, 0.2) 0px 0px 0px 0.5px inset,
+    rgba(0, 0, 0, 0.05) 0px 1px 2px 0px;
+  --shadow-focus: rgba(0, 0, 0, 0.1) 0px 4px 12px;
+  --shadow-modal: rgba(0, 0, 0, 0.12) 0px 16px 48px;
+}
+
+:root {
+  --background: var(--color-cream);
+  --foreground: var(--color-charcoal);
+  --border: var(--color-border-passive);
+  --ring: rgba(59, 130, 246, 0.5);
+  --radius: 12px;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border-passive);
+  }
+  html,
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-charcoal);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(28, 28, 28, 0.2);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(28, 28, 28, 0.4);
+  }
+}
+
+@layer utilities {
+  .text-display {
+    font-size: 3.75rem;
+    font-weight: 600;
+    line-height: 1.05;
+    letter-spacing: -1.5px;
+  }
+  .text-section {
+    font-size: 3rem;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -1.2px;
+  }
+  .text-subsection {
+    font-size: 2.25rem;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.9px;
+  }
+  .text-card-title {
+    font-size: 1.25rem;
+    font-weight: 400;
+    line-height: 1.25;
+  }
+  .text-body-lg {
+    font-size: 1.125rem;
+    font-weight: 400;
+    line-height: 1.4;
+  }
+  .text-caption {
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.5;
+  }
+  .shadow-button-inset {
+    box-shadow: var(--shadow-button-inset);
+  }
+  .shadow-focus {
+    box-shadow: var(--shadow-focus);
+  }
+  .shadow-modal {
+    box-shadow: var(--shadow-modal);
+  }
+}
+
+@keyframes step-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.7;
+  }
+}
+.animate-step-pulse {
+  animation: step-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: fade-up 400ms ease-out forwards;
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-modal-in {
+  animation: modal-in 200ms ease-out forwards;
+}

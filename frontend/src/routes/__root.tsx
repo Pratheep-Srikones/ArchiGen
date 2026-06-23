@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Outlet, Link, useRouter, createRootRoute } from "@tanstack/react-router";
 import { AuthProvider } from "@asgardeo/auth-react";
+import { Toaster } from "@/components/ui/sonner";
 import AuthInitializer from "@/components/auth/AuthInitializer";
 
 const queryClient = new QueryClient();
@@ -79,6 +80,7 @@ function RootComponent() {
   return (
     <AuthProvider config={config}>
       <AuthInitializer />
+      <Toaster position="bottom-right" />
       <Outlet />
     </AuthProvider>
   );

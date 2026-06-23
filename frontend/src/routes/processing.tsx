@@ -13,7 +13,12 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { z } from "zod";
 import { NavigationBar } from "@/components/architect/NavigationBar";
-import { AGENT_STEPS, type AgentStep, type StepStatus, type ArchitectureOutput } from "@/lib/mock-data";
+import {
+  AGENT_STEPS,
+  type AgentStep,
+  type StepStatus,
+  type ArchitectureOutput,
+} from "@/lib/mock-data";
 import { getArchitectureResponse } from "@/services/ai";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -101,11 +106,9 @@ function ProcessingPage() {
         // Backend finished before the animation cycled; show a brief pause
         // then navigate.
         const t = setTimeout(() => {
-          const projectId = architecture.projectId ?? crypto.randomUUID();
-          const navState = { architecture: { ...architecture, projectId } };
+          const navState = { architecture };
           navigate({
-            to: "/architecture/$projectId",
-            params: { projectId },
+            to: "/result",
             state: navState as Record<string, unknown>,
           });
         }, 600);

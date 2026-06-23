@@ -59,7 +59,6 @@ export interface Project {
   title: string;
   requirements: string;
   createdAt: string;
-  architectureType: string;
 }
 
 export const MOCK_PROJECTS: Project[] = [
@@ -69,7 +68,6 @@ export const MOCK_PROJECTS: Project[] = [
     requirements:
       "Architecture for a live streaming platform supporting 100k concurrent viewers with low-latency HLS and WebRTC chat.",
     createdAt: "2 hours ago",
-    architectureType: "Streaming",
   },
   {
     id: "mock-project-2",
@@ -77,7 +75,6 @@ export const MOCK_PROJECTS: Project[] = [
     requirements:
       "Design a scalable e-commerce backend with cart, checkout, inventory, and payment services.",
     createdAt: "1 day ago",
-    architectureType: "E-commerce",
   },
   {
     id: "mock-project-3",
@@ -85,7 +82,6 @@ export const MOCK_PROJECTS: Project[] = [
     requirements:
       "Architecture for serving ML models at scale with autoscaling, A/B routing, and observability.",
     createdAt: "3 days ago",
-    architectureType: "ML Platform",
   },
   {
     id: "mock-project-4",
@@ -93,7 +89,6 @@ export const MOCK_PROJECTS: Project[] = [
     requirements:
       "System design for a collaborative document editor with CRDT-based sync and presence.",
     createdAt: "5 days ago",
-    architectureType: "Collaboration",
   },
   {
     id: "mock-project-5",
@@ -101,7 +96,6 @@ export const MOCK_PROJECTS: Project[] = [
     requirements:
       "Architecture for a multi-tenant CRM with row-level isolation, audit logs, and webhook integrations.",
     createdAt: "1 week ago",
-    architectureType: "SaaS",
   },
   {
     id: "mock-project-6",
@@ -109,7 +103,6 @@ export const MOCK_PROJECTS: Project[] = [
     requirements:
       "Design an event-driven notification service with fan-out, dedup, and channel routing.",
     createdAt: "2 weeks ago",
-    architectureType: "Messaging",
   },
 ];
 

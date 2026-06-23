@@ -121,9 +121,6 @@ function DashboardPage() {
                 className="text-left bg-cream border border-border-passive hover:border-charcoal-30 rounded-xl p-5 transition-colors group"
               >
                 <div className="flex items-start justify-between">
-                  <span className="inline-block rounded-full bg-charcoal-04 px-2.5 py-0.5 text-[12px] text-charcoal">
-                    {p.architectureType}
-                  </span>
                   <ArrowUpRight
                     size={16}
                     strokeWidth={1.5}

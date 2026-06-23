@@ -25,8 +25,7 @@ export const AGENT_STEPS: ReadonlyArray<Omit<AgentStep, "status">> = [
   {
     id: "analyze",
     label: "Analyzing system requirements",
-    subMessage:
-      "Identifying core constraints, scale targets, and integration boundaries",
+    subMessage: "Identifying core constraints, scale targets, and integration boundaries",
   },
   {
     id: "macro",
@@ -36,8 +35,7 @@ export const AGENT_STEPS: ReadonlyArray<Omit<AgentStep, "status">> = [
   {
     id: "micro",
     label: "Designing micro architecture",
-    subMessage:
-      "Detailing component internals, API contracts, and communication patterns",
+    subMessage: "Detailing component internals, API contracts, and communication patterns",
   },
   {
     id: "stack",
@@ -92,8 +90,7 @@ export const MOCK_PROJECTS: Project[] = [
   {
     id: "mock-project-4",
     title: "Real-Time Collaborative Editor",
-    prompt:
-      "System design for a collaborative document editor with CRDT-based sync and presence.",
+    prompt: "System design for a collaborative document editor with CRDT-based sync and presence.",
     createdAt: "5 days ago",
     architectureType: "Collaboration",
   },
@@ -108,8 +105,7 @@ export const MOCK_PROJECTS: Project[] = [
   {
     id: "mock-project-6",
     title: "Event-Driven Notification System",
-    prompt:
-      "Design an event-driven notification service with fan-out, dedup, and channel routing.",
+    prompt: "Design an event-driven notification service with fan-out, dedup, and channel routing.",
     createdAt: "2 weeks ago",
     architectureType: "Messaging",
   },
@@ -117,13 +113,7 @@ export const MOCK_PROJECTS: Project[] = [
 
 export interface TechItem {
   name: string;
-  layer:
-    | "Frontend"
-    | "Backend"
-    | "Database"
-    | "Infrastructure"
-    | "DevOps"
-    | "Messaging";
+  layer: "Frontend" | "Backend" | "Database" | "Infrastructure" | "DevOps" | "Messaging";
   role: string;
   justification: string;
 }
@@ -141,7 +131,7 @@ export interface RepoNode {
 }
 
 export interface ArchitectureOutput {
-  projectId: string;
+  projectId?: string;
   title: string;
   prompt: string;
   macro: string;

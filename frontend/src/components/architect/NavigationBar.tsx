@@ -9,7 +9,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArchButton } from "./Button";
 import { User, LogOut } from "lucide-react";
-import { useAuthContext } from "@asgardeo/auth-react";
+import { useAuth } from "@/hooks/use-auth";
 interface NavigationBarProps {
   /** Hide the "New Architecture" CTA on screens where it isn't useful. */
   showNewButton?: boolean;
@@ -18,8 +18,7 @@ interface NavigationBarProps {
 }
 
 export function NavigationBar({ showNewButton = true, rightSlot }: NavigationBarProps) {
-  const { signOut, state } = useAuthContext();
-  const isAuthenticated = state?.isAuthenticated;
+  const { logout, isAuthenticated, user } = useAuth();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-40 bg-cream border-b border-border-passive h-14">
@@ -38,16 +37,21 @@ export function NavigationBar({ showNewButton = true, rightSlot }: NavigationBar
           )}
           {isAuthenticated && (
             <>
-              <button
+              <Link
+                to="/profile"
                 aria-label="Account"
-                className="w-8 h-8 rounded-full bg-cream border border-border-passive flex items-center justify-center text-charcoal-60 hover:border-charcoal-40 transition-colors"
+                className="w-8 h-8 rounded-full bg-cream border border-border-passive flex items-center justify-center text-charcoal-60 hover:border-charcoal-40 transition-colors overflow-hidden"
               >
-                <User size={14} strokeWidth={1.5} />
-              </button>
+                {user?.picture ? (
+                  <img src={user.picture} alt="Account" className="w-full h-full object-cover" />
+                ) : (
+                  <User size={14} strokeWidth={1.5} />
+                )}
+              </Link>
               <button
                 aria-label="Logout"
                 className="w-8 h-8 rounded-full bg-cream border border-border-passive flex items-center justify-center text-charcoal-60 hover:border-charcoal-40 transition-colors"
-                onClick={() => signOut()}
+                onClick={() => logout()}
               >
                 <LogOut size={14} strokeWidth={1.5} />
               </button>

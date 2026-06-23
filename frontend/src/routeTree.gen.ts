@@ -14,6 +14,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard.tsx'
 import { Route as ProcessingRouteImport } from './routes/processing.tsx'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ArchitectureProjectIdRouteImport } from './routes/architecture.$projectId.tsx'
+import { Route as ProfileRouteImport } from './routes/profile.tsx'
 
 const NotAuthenticatedRoute = NotAuthenticatedRouteImport.update({
   id: '/not-authenticated',
@@ -40,6 +41,11 @@ const ArchitectureProjectIdRoute = ArchitectureProjectIdRouteImport.update({
   path: '/architecture/$projectId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/processing': typeof ProcessingRoute
   '/architecture/$projectId': typeof ArchitectureProjectIdRoute
+  '/profile': typeof ProfileRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/processing': typeof ProcessingRoute
   '/architecture/$projectId': typeof ArchitectureProjectIdRoute
+  '/profile': typeof ProfileRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +70,14 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/processing': typeof ProcessingRoute
   '/architecture/$projectId': typeof ArchitectureProjectIdRoute
+  '/profile': typeof ProfileRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/not-authenticated' | '/dashboard' | '/processing' | '/architecture/$projectId'
+  fullPaths: '/' | '/not-authenticated' | '/dashboard' | '/processing' | '/architecture/$projectId' | '/profile'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/not-authenticated' | '/dashboard' | '/processing' | '/architecture/$projectId'
-  id: '__root__' | '/' | '/not-authenticated' | '/dashboard' | '/processing' | '/architecture/$projectId'
+  to: '/' | '/not-authenticated' | '/dashboard' | '/processing' | '/architecture/$projectId' | '/profile'
+  id: '__root__' | '/' | '/not-authenticated' | '/dashboard' | '/processing' | '/architecture/$projectId' | '/profile'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,6 +86,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   ProcessingRoute: typeof ProcessingRoute
   ArchitectureProjectIdRoute: typeof ArchitectureProjectIdRoute
+  ProfileRoute: typeof ProfileRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -116,6 +126,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArchitectureProjectIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -125,6 +142,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   ProcessingRoute: ProcessingRoute,
   ArchitectureProjectIdRoute: ArchitectureProjectIdRoute,
+  ProfileRoute: ProfileRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

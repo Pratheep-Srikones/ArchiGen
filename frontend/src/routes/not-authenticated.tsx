@@ -7,8 +7,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { NavigationBar } from "@/components/architect/NavigationBar";
 import { ArchButton } from "@/components/architect/Button";
-import { useAuthContext } from "@asgardeo/auth-react";
 import { LogIn, ArrowLeft, Lock } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/not-authenticated")({
   component: NotAuthenticatedPage,
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/not-authenticated")({
 });
 
 function NotAuthenticatedPage() {
-  const { signIn } = useAuthContext();
+  const { login } = useAuth();
 
   return (
     <div className="min-h-screen bg-cream">
@@ -43,7 +43,7 @@ function NotAuthenticatedPage() {
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <ArchButton variant="primary" size="default" onClick={() => signIn()}>
+            <ArchButton variant="primary" size="default" onClick={() => login()}>
               <LogIn size={16} strokeWidth={1.5} />
               Sign In
             </ArchButton>

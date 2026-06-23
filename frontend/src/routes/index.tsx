@@ -7,8 +7,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { NavigationBar } from "@/components/architect/NavigationBar";
 import { ArchButton } from "@/components/architect/Button";
-import { useAuthContext } from "@asgardeo/auth-react";
 import { Layers, Zap, Shield, ArrowRight, LogIn, LogOut, User } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -46,7 +46,7 @@ const FEATURES = [
 ];
 
 function HomePage() {
-  const { signIn, signOut, state } = useAuthContext();
+  const { login, logout, state } = useAuth();
   const isAuthenticated = state?.isAuthenticated;
 
   return (
@@ -75,14 +75,14 @@ function HomePage() {
                     <ArrowRight size={16} strokeWidth={1.5} />
                   </ArchButton>
                 </Link>
-                <ArchButton variant="ghost" size="default" onClick={() => signOut()}>
+                <ArchButton variant="ghost" size="default" onClick={() => logout()}>
                   <LogOut size={16} strokeWidth={1.5} />
                   Sign Out
                 </ArchButton>
               </>
             ) : (
               <>
-                <ArchButton variant="primary" size="default" onClick={() => signIn()}>
+                <ArchButton variant="primary" size="default" onClick={() => login()}>
                   <LogIn size={16} strokeWidth={1.5} />
                   Sign In
                 </ArchButton>
@@ -129,7 +129,7 @@ function HomePage() {
                 </Link>
               ) : (
                 <>
-                  <ArchButton variant="primary" size="default" onClick={() => signIn()}>
+                  <ArchButton variant="primary" size="default" onClick={() => login()}>
                     <User size={16} strokeWidth={1.5} />
                     Sign In & Get Started
                   </ArchButton>

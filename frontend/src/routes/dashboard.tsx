@@ -13,9 +13,9 @@ import { NavigationBar } from "@/components/architect/NavigationBar";
 import { ArchButton } from "@/components/architect/Button";
 import { MOCK_PROJECTS } from "@/lib/mock-data";
 import { ArrowUpRight } from "lucide-react";
-import { useAuthContext } from "@asgardeo/auth-react";
 import { CheckingAuthentication } from "@/components/auth/CheckingAuthentication";
 import { Loading } from "@/components/Loading";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export const Route = createFileRoute("/dashboard")({
   component: DashboardPage,
@@ -39,7 +39,7 @@ const SUGGESTIONS = [
 ];
 
 function DashboardPage() {
-  const { state } = useAuthContext();
+  const { isAuthenticated, loading } = useAuthStore();
 
   const navigate = useNavigate();
   const [prompt, setPrompt] = useState("");
@@ -49,15 +49,11 @@ function DashboardPage() {
     navigate({ to: "/processing", search: { prompt } });
   };
 
-  if (!state) {
-    return <Loading />;
-  }
-
-  if (state.isLoading) {
+  if (loading) {
     return <CheckingAuthentication />;
   }
 
-  if (!state.isAuthenticated) {
+  if (!isAuthenticated) {
     return <Loading fullScreen label="Redirecting to sign in…" />;
   }
 

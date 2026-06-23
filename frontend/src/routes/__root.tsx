@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Outlet, Link, useRouter, createRootRoute } from "@tanstack/react-router";
 import { AuthProvider } from "@asgardeo/auth-react";
+import AuthInitializer from "@/components/auth/AuthInitializer";
 
 const queryClient = new QueryClient();
 function NotFoundComponent() {
@@ -72,11 +73,12 @@ function RootComponent() {
     signOutRedirectURL: "http://localhost:5173/",
     clientID: "5G0n45REyVCjQquI9wZcHT_0xWUa",
     baseUrl: "https://api.asgardeo.io/t/prtp",
-    scope: ["openid", "profile"],
+    scope: ["openid", "profile", "email"],
   };
 
   return (
     <AuthProvider config={config}>
+      <AuthInitializer />
       <Outlet />
     </AuthProvider>
   );

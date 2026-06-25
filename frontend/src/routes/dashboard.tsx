@@ -9,11 +9,10 @@
  * No business logic lives here — generation is simulated on /processing.
  */
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { NavigationBar } from "@/components/architect/NavigationBar";
 import { ArchButton } from "@/components/architect/Button";
-import { MOCK_PROJECTS } from "@/lib/mock-data";
 import { ArrowUpRight, AlertCircle, RefreshCw, FolderOpen } from "lucide-react";
 import { CheckingAuthentication } from "@/components/auth/CheckingAuthentication";
 import { Loading } from "@/components/Loading";
@@ -56,8 +55,7 @@ function DashboardPage() {
   } = useQuery({
     queryKey: ["projects", "dashboard", user?.id],
     queryFn: async () => {
-      if (!user?.id) return { projects: [], total_count: 0 };
-      return await readProjects(user.id, 0, 6, "");
+      return await readProjects(0, 6, "");
     },
     enabled: !!user?.id && isAuthenticated,
   });

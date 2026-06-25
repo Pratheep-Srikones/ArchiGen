@@ -1,27 +1,25 @@
 /**
  * Route: "/architecture/$projectId" — saved architecture detail view.
  *
- * Fetches the project by ID from the backend (currently falls back to
- * MOCK_ARCHITECTURE). Uses the shared ArchitectureView presentational
- * component to render the full architecture document.
+ * Fetches the project architecture by ID from the backend.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { NavigationBar } from "@/components/architect/NavigationBar";
 import { ArchitectureView } from "@/components/architect/ArchitectureView";
-import { MOCK_ARCHITECTURE } from "@/lib/mock-data";
 import type { ArchitectureOutput } from "@/lib/mock-data";
+import { getArchitecture } from "@/services/project";
 import { Loading } from "@/components/Loading";
 
 export const Route = createFileRoute("/architecture/$projectId")({
   component: ArchitecturePage,
   head: () => ({
     meta: [
-      { title: "Live Streaming Service Architecture — ArchitectAI" },
+      { title: "Project Architecture — ArchitectAI" },
       {
         name: "description",
         content:
-          "Complete architecture for a live streaming platform: macro design, micro components, tech stack, Mermaid diagram, and repository structure.",
+          "Complete architecture for your project: macro design, micro components, tech stack, Mermaid diagram, and repository structure.",
       },
     ],
   }),
@@ -29,13 +27,9 @@ export const Route = createFileRoute("/architecture/$projectId")({
 
 function useProject(projectId: string) {
   return useQuery({
-    queryKey: ["project", projectId],
+    queryKey: ["project", "architecture", projectId],
     queryFn: async (): Promise<ArchitectureOutput> => {
-      // TODO: replace with real backend fetch
-      // import { axiosInstance } from "@/config/axiosConfig";
-      // const res = await axiosInstance.get(`/projects/${projectId}`);
-      // return res.data;
-      return MOCK_ARCHITECTURE;
+      return await getArchitecture(projectId);
     },
   });
 }
@@ -53,7 +47,7 @@ function ArchitecturePage() {
     );
   }
 
-  if (query.isError) {
+  if (query.isError || !query.data) {
     return (
       <div className="min-h-screen bg-cream">
         <NavigationBar showNewButton />
@@ -67,7 +61,7 @@ function ArchitecturePage() {
   return (
     <div className="min-h-screen bg-cream">
       <NavigationBar showNewButton />
-      <ArchitectureView data={query.data!} isTemporary={false} />
+      <ArchitectureView data={query.data} isTemporary={false} />
     </div>
   );
 }

@@ -59,35 +59,51 @@ async def get_projects(user_id: str, start: int, count: int, search: str | None,
     except SQLAlchemyError:
         raise HTTPException(status_code=500, detail="Database error")
 
-async def get_architecture_by_project_id(project_id: str, db: AsyncSession):
-	if not project_id:
-		raise HTTPException(status_code=400, detail="Invalid project ID")
-	try:
-		project_uuid = uuid.UUID(project_id)
-		stmt = (
-			select(Architecture)
-			.where(Architecture.project_id == project_uuid)
-		)
-		result = await db.execute(stmt)
-		architecture = result.scalars().first()
-		if not architecture:
-			raise HTTPException(status_code=404, detail="Architecture not found")
-		return {
-			"status": "success",
-			"message": "Architecture fetched successfully.",
-			"data": architecture,
-		}
-
-	except ValueError:
-		raise HTTPException(status_code=400, detail="Invalid project ID")
-
-	except SQLAlchemyError:
-		raise HTTPException(status_code=500, detail="Database error")
-
-
-async def save_project_and_architecture(payload: ProjectSaveRequest, db: AsyncSession):
+async def get_architecture_by_project_id(
+    project_id: str,
+    user_id: str,
+    db: AsyncSession
+):
     try:
-        user_uuid = uuid.UUID(payload.user_id)
+        project_uuid = uuid.UUID(project_id)
+        user_uuid = uuid.UUID(user_id)
+
+        stmt = (
+            select(Architecture)
+            .join(Project, Architecture.project_id == Project.id)
+            .where(
+                Architecture.project_id == project_uuid,
+                Project.user_id == user_uuid
+            )
+        )
+
+        result = await db.execute(stmt)
+        architecture = result.scalars().first()
+
+        if not architecture:
+            raise HTTPException(
+                status_code=404,
+                detail="Architecture not found or access denied"
+            )
+
+        return {
+            "status": "success",
+            "message": "Architecture fetched successfully.",
+            "data": architecture,
+        }
+
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid UUID")
+
+    except SQLAlchemyError:
+        raise HTTPException(status_code=500, detail="Database error")
+
+
+async def save_project_and_architecture(payload: ProjectSaveRequest, user_id: str, db: AsyncSession):
+    if user_id != payload.user_id:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    try:
+        user_uuid = uuid.UUID(user_id)
         project_uuid = uuid.UUID(payload.project_id)
 
         new_project = Project(
@@ -128,6 +144,50 @@ async def save_project_and_architecture(payload: ProjectSaveRequest, db: AsyncSe
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="A project with this ID might already exist.",
+        )
+    except SQLAlchemyError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database error",
+        )
+
+async def update_architecture(payload: ProjectSaveRequest, user_id: str, db: AsyncSession):
+    try:
+        user_uuid = uuid.UUID(user_id)
+        project_uuid = uuid.UUID(payload.project_id)
+
+        architecture = await db.execute(
+            select(Architecture)
+            .where(Architecture.project_id == project_uuid)
+        )
+        architecture = architecture.scalars().first()
+
+        if not architecture:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Architecture not found",
+            )
+
+        architecture.title = payload.title
+        architecture.requirements = payload.requirements
+        architecture.architecture = payload.architecture
+        architecture.mermaid_code = payload.mermaid_code
+        architecture.micro = [item.model_dump() for item in payload.micro]
+        architecture.tech_stack = [item.model_dump() for item in payload.tech_stack]
+        architecture.repo = [item.model_dump() for item in payload.repo]
+
+        await db.commit()
+
+        return {
+            "status": "success",
+            "message": "Architecture updated successfully.",
+        }
+
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid UUID format provided for user_id or project_id.",
         )
     except SQLAlchemyError:
         await db.rollback()

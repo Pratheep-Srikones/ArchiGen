@@ -35,18 +35,14 @@ export const createProject = async (projectData: CreateProjectRequest) => {
 };
 
 export const readProjects = async (
-  user_id: string,
   start: number = 0,
   limit: number = 6,
   search: string = "",
 ): Promise<GetProjectResponse> => {
-  if (!user_id) {
-    return { projects: [], total_count: 0 };
-  }
 
   try {
     const response = await projectApi.get(`/projects`, {
-      params: { start, count: limit, search, user_id },
+      params: { start, count: limit, search },
     });
     const result: GetProjectResponse = response.data.data;
     return result;

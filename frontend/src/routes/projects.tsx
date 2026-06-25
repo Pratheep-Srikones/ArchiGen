@@ -9,12 +9,10 @@ import { useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { NavigationBar } from "@/components/architect/NavigationBar";
 import { ArchButton } from "@/components/architect/Button";
-import { MOCK_PROJECTS, type Project } from "@/lib/mock-data";
+import { MOCK_PROJECTS } from "@/lib/mock-data";
 import {
   ArrowUpRight,
-  Search,
-  Loader2,
-  FolderOpen,
+  Search,  FolderOpen,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -56,7 +54,7 @@ function ProjectsPage() {
     queryKey: ["projects", "list", user?.id, submittedSearch, start, pageSize],
     queryFn: async () => {
       if (!user?.id) return { projects: [], total_count: 0 };
-      const result = await readProjects(user.id, start, pageSize, submittedSearch);
+      const result = await readProjects(start, pageSize, submittedSearch);
       return result;
     },
     enabled: !!user?.id && isAuthenticated,

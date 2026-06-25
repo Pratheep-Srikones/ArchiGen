@@ -1,14 +1,13 @@
 /**
  * Route: "/architecture/$projectId" — saved architecture detail view.
  *
- * Fetches the project by ID from the backend, falling back to mock data
- * when the API is unreachable so the UI remains usable in dev/offline mode.
+ * Fetches the project architecture by ID from the backend.
+ * Renders a loading state while fetching and an error message on failure.
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { NavigationBar } from "@/components/architect/NavigationBar";
 import { ArchitectureView } from "@/components/architect/ArchitectureView";
-import { MOCK_ARCHITECTURE } from "@/lib/mock-data";
 import type { ArchitectureOutput } from "@/lib/mock-data";
 import { getArchitecture } from "@/services/project";
 import { Loading } from "@/components/Loading";
@@ -31,12 +30,7 @@ function useProject(projectId: string) {
   return useQuery({
     queryKey: ["project", "architecture", projectId],
     queryFn: async (): Promise<ArchitectureOutput> => {
-      try {
-        return await getArchitecture(projectId);
-      } catch (error) {
-        console.warn("Backend unreachable, falling back to mock architecture:", error);
-        return MOCK_ARCHITECTURE;
-      }
+      return await getArchitecture(projectId);
     },
   });
 }

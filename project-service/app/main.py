@@ -19,6 +19,7 @@ async def startup_event():
     async with engine.begin() as conn:
         # Warning: This is great for dev, but use migrations (Alembic) for production!
         await conn.run_sync(Base.metadata.create_all)
+        
 app.include_router(projects_router, prefix="/projects")
  
 @app.get("/")

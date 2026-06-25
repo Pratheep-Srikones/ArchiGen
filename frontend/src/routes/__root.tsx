@@ -74,7 +74,7 @@ function RootComponent() {
     signOutRedirectURL: "http://localhost:5173/",
     clientID: "5G0n45REyVCjQquI9wZcHT_0xWUa",
     baseUrl: "https://api.asgardeo.io/t/prtp",
-    scope: ["openid", "profile", "email"],
+    scope: ["openid", "profile", "email", "read:projects", "write:projects"],
   };
 
   return (

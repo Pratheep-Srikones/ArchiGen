@@ -116,7 +116,7 @@ function ProcessingPage() {
       const t = setTimeout(() => dispatch({ type: "activate_last" }), 1000);
       return () => clearTimeout(t);
     }
-    
+
     // Total of 6 steps. 60 seconds / 6 steps = ~10 seconds per step.
     const dur = 9000 + Math.random() * 2000;
     const t = setTimeout(() => dispatch({ type: "advance" }), dur);
@@ -141,7 +141,8 @@ function ProcessingPage() {
               Structuring Architecture
             </h1>
             <p className="text-caption text-muted mt-1 max-w-sm mx-auto">
-              Our multi-agent pipeline is analyzing requirements, selecting technologies, and drafting diagram layouts.
+              Our multi-agent pipeline is analyzing requirements, selecting technologies, and
+              drafting diagram layouts.
             </p>
           </div>
 
@@ -227,8 +228,8 @@ function StepRow({ step, isFirst, isLast, prevStatus }: StepRowProps) {
     ? prevStatus === "completed"
       ? "bg-success w-[2px]"
       : isActive
-      ? "bg-blueprint w-[2px] animate-pulse"
-      : "bg-border-passive w-[2px]"
+        ? "bg-blueprint w-[2px] animate-pulse"
+        : "bg-border-passive w-[2px]"
     : "";
 
   const bottomLineClass = !isLast
@@ -251,7 +252,9 @@ function StepRow({ step, isFirst, isLast, prevStatus }: StepRowProps) {
       <div className="relative flex flex-col items-center shrink-0 self-stretch min-h-[4.5rem]">
         {/* Top Connecting Line */}
         {!isFirst && (
-          <div className={cn("absolute top-0 bottom-1/2 left-1/2 -translate-x-1/2 z-0", topLineClass)} />
+          <div
+            className={cn("absolute top-0 bottom-1/2 left-1/2 -translate-x-1/2 z-0", topLineClass)}
+          />
         )}
 
         {/* The Icon Container */}
@@ -264,7 +267,10 @@ function StepRow({ step, isFirst, isLast, prevStatus }: StepRowProps) {
           {isActive && (
             <div className="relative w-10 h-10 rounded-full bg-blueprint-light flex items-center justify-center text-blueprint border border-blueprint/30">
               {/* Spinning outer dotted ring */}
-              <div className="absolute inset-[-4px] rounded-full border border-dashed border-blueprint animate-spin" style={{ animationDuration: '8s' }} />
+              <div
+                className="absolute inset-[-4px] rounded-full border border-dashed border-blueprint animate-spin"
+                style={{ animationDuration: "8s" }}
+              />
               <IconComponent size={18} strokeWidth={2} className="animate-pulse" />
             </div>
           )}
@@ -277,7 +283,12 @@ function StepRow({ step, isFirst, isLast, prevStatus }: StepRowProps) {
 
         {/* Bottom Connecting Line */}
         {!isLast && (
-          <div className={cn("absolute top-1/2 bottom-0 left-1/2 -translate-x-1/2 z-0", bottomLineClass)} />
+          <div
+            className={cn(
+              "absolute top-1/2 bottom-0 left-1/2 -translate-x-1/2 z-0",
+              bottomLineClass,
+            )}
+          />
         )}
       </div>
 

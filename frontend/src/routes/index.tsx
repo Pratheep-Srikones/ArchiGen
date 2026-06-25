@@ -56,12 +56,12 @@ function HomePage() {
       <main className="pt-14">
         {/* Hero */}
         <section className="max-w-180 mx-auto text-center px-6 pt-24 pb-20">
-          <h1 className="text-display text-charcoal">
+          <h1 className="text-5xl md:text-display text-charcoal">
             Design system architecture
             <br />
             in plain language
           </h1>
-          <p className="mt-6 text-body-lg text-muted max-w-140 mx-auto">
+          <p className="mt-6 text-base md:text-body-lg text-muted max-w-140 mx-auto">
             Describe your system and get a complete architecture document — macro design, tech
             stack, diagrams, and repository structure — generated instantly.
           </p>
@@ -97,7 +97,7 @@ function HomePage() {
             {FEATURES.map((feature) => (
               <div
                 key={feature.title}
-                className="rounded-xl border border-border-passive bg-cream p-6 transition-colors hover:border-charcoal-30"
+                className="rounded-xl border border-border-passive bg-cream p-6 transition-all duration-300 hover:border-charcoal-40 hover:shadow-md hover:-translate-y-1"
               >
                 <div className="w-10 h-10 rounded-lg bg-charcoal-04 flex items-center justify-center text-charcoal">
                   <feature.icon size={20} strokeWidth={1.5} />
@@ -114,8 +114,8 @@ function HomePage() {
         {/* CTA bottom */}
         <section className="border-t border-border-passive">
           <div className="max-w-180 mx-auto px-6 py-16 text-center">
-            <h2 className="text-section text-charcoal">Ready to architect?</h2>
-            <p className="mt-4 text-body-lg text-muted max-w-120 mx-auto">
+            <h2 className="text-3xl md:text-section text-charcoal">Ready to architect?</h2>
+            <p className="mt-4 text-base md:text-body-lg text-muted max-w-120 mx-auto">
               Join thousands of engineers who use ArchitectAI to move from idea to implementation
               plan in minutes.
             </p>

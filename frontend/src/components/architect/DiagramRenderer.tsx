@@ -66,7 +66,7 @@ export function DiagramRenderer({ id, source, className }: DiagramRendererProps)
       } catch (e: any) {
         // Extract descriptive error details if possible
         if (!cancelled) {
-          const errMsg = e?.message || (e && typeof e === 'object' ? JSON.stringify(e) : String(e));
+          const errMsg = e?.message || (e && typeof e === "object" ? JSON.stringify(e) : String(e));
           setError(errMsg);
         }
       }
@@ -84,13 +84,15 @@ export function DiagramRenderer({ id, source, className }: DiagramRendererProps)
           Mermaid Syntax Error
         </div>
         <p className="text-caption text-charcoal-70">
-          The diagram could not be rendered due to a syntax issue. You can edit the code source to fix it:
+          The diagram could not be rendered due to a syntax issue. You can edit the code source to
+          fix it:
         </p>
         <pre className="p-4 bg-charcoal text-off-white rounded-lg font-mono text-[12px] overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-56 select-text border border-charcoal/10">
           {error}
         </pre>
         <p className="text-[12px] text-muted italic">
-          Tip: Check for matching quotes, valid syntax connections (like `--&gt;`), and correct direction nodes.
+          Tip: Check for matching quotes, valid syntax connections (like `--&gt;`), and correct
+          direction nodes.
         </p>
       </div>
     );

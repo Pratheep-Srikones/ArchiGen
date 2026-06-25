@@ -24,7 +24,8 @@ export function InvalidAccess() {
 
           {/* Explanation */}
           <p className="mt-4 text-body-lg text-muted">
-            You've reached the result page, but there's no active generation session in progress or architecture data loaded.
+            You've reached the result page, but there's no active generation session in progress or
+            architecture data loaded.
           </p>
 
           {/* CTAs */}

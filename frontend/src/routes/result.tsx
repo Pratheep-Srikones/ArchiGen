@@ -43,7 +43,6 @@ function ResultPage() {
     console.log("RESULT PAGE RENDER");
   }, []);
 
-
   if (loading) {
     return <CheckingAuthentication />;
   }

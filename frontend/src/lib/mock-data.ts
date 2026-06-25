@@ -56,9 +56,11 @@ export const AGENT_STEPS: ReadonlyArray<Omit<AgentStep, "status">> = [
 
 export interface Project {
   id: string;
+  user_id?: string;
   title: string;
   requirements: string;
-  createdAt: string;
+  createdAt?: string;
+  created_at?: string;
 }
 
 export const MOCK_PROJECTS: Project[] = [

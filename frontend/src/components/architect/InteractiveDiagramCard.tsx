@@ -51,11 +51,9 @@ export function InteractiveDiagramCard({
   return (
     <div className={cn("flex flex-col gap-3", className)}>
       <div className="rounded-xl border border-blueprint-border overflow-hidden bg-off-white shadow-sm flex flex-col">
-        
         {/* Main Display Area */}
         {showSource ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[450px]">
-            
             {/* Editor Pane (Column 1-5) */}
             <div className="lg:col-span-5 flex flex-col border-b lg:border-b-0 lg:border-r border-border-passive bg-charcoal-03/40">
               <div className="flex items-center justify-between px-4 py-2.5 bg-cream/70 border-b border-border-passive">
@@ -109,7 +107,6 @@ export function InteractiveDiagramCard({
                 <DiagramRenderer id={`edit-${id}`} source={source} className="max-w-full" />
               </div>
             </div>
-
           </div>
         ) : (
           /* Normal Display Box (Editor hidden) */
@@ -122,9 +119,7 @@ export function InteractiveDiagramCard({
 
         {/* Footer Actions Panel */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between bg-cream border-t border-border-passive px-5 py-3 gap-3">
-          <p className="text-caption text-muted font-medium truncate">
-            {description}
-          </p>
+          <p className="text-caption text-muted font-medium truncate">{description}</p>
           <div className="flex flex-wrap items-center gap-2">
             <ArchButton
               variant="cream"
@@ -164,7 +159,6 @@ export function InteractiveDiagramCard({
             </ArchButton>
           </div>
         </div>
-
       </div>
     </div>
   );

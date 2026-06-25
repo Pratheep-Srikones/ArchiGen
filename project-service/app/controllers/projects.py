@@ -75,7 +75,7 @@ async def get_architecture_by_project_id(project_id: str, db: AsyncSession):
 		return {
 			"status": "success",
 			"message": "Architecture fetched successfully.",
-			"architecture": architecture,
+			"data": architecture,
 		}
 
 	except ValueError:

@@ -10,14 +10,14 @@ export const downloadSvg = (containerEl: HTMLDivElement | null, fileName: string
 
   try {
     const svgClone = svgEl.cloneNode(true) as SVGElement;
-    
+
     // Ensure XML namespaces are present
     svgClone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     svgClone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
 
     const svgSerializer = new XMLSerializer();
     const svgString = svgSerializer.serializeToString(svgClone);
-    
+
     const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
 
@@ -26,10 +26,10 @@ export const downloadSvg = (containerEl: HTMLDivElement | null, fileName: string
     // Clean filename (remove special chars)
     const safeName = fileName.replace(/[^a-z0-9]/gi, "_").toLowerCase() || "diagram";
     link.download = `${safeName}.svg`;
-    
+
     document.body.appendChild(link);
     link.click();
-    
+
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   } catch (error) {
@@ -57,7 +57,7 @@ export const downloadPng = (containerEl: HTMLDivElement | null, fileName: string
 
     const svgSerializer = new XMLSerializer();
     const svgString = svgSerializer.serializeToString(svgClone);
-    
+
     // Convert to a base64 Data URL to load into Image
     const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(svgBlob);
@@ -66,7 +66,7 @@ export const downloadPng = (containerEl: HTMLDivElement | null, fileName: string
     img.onload = () => {
       try {
         const canvas = document.createElement("canvas");
-        
+
         // Scale factor for high DPI/Retina quality (2x)
         const scale = 2;
         canvas.width = width * scale;
@@ -77,7 +77,7 @@ export const downloadPng = (containerEl: HTMLDivElement | null, fileName: string
           // Fill white background so transparent SVGs don't output black/blank backgrounds
           ctx.fillStyle = "#ffffff";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
-          
+
           ctx.scale(scale, scale);
           ctx.drawImage(img, 0, 0, width, height);
 
@@ -86,13 +86,13 @@ export const downloadPng = (containerEl: HTMLDivElement | null, fileName: string
               const pngUrl = URL.createObjectURL(blob);
               const link = document.createElement("a");
               link.href = pngUrl;
-              
+
               const safeName = fileName.replace(/[^a-z0-9]/gi, "_").toLowerCase() || "diagram";
               link.download = `${safeName}.png`;
-              
+
               document.body.appendChild(link);
               link.click();
-              
+
               document.body.removeChild(link);
               URL.revokeObjectURL(pngUrl);
             }

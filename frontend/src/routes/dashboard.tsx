@@ -8,7 +8,7 @@
  * No business logic lives here — generation is simulated on /processing.
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavigationBar } from "@/components/architect/NavigationBar";
 import { ArchButton } from "@/components/architect/Button";
 import { MOCK_PROJECTS } from "@/lib/mock-data";
@@ -39,6 +39,11 @@ const SUGGESTIONS = [
 ];
 
 function DashboardPage() {
+
+  useEffect(() => {
+    console.log("NAVBAR RENDER")
+  },[])
+
   const { isAuthenticated, loading } = useAuthStore();
 
   const navigate = useNavigate();

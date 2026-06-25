@@ -10,6 +10,7 @@ import { Link } from "@tanstack/react-router";
 import { ArchButton } from "./Button";
 import { User, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useEffect } from "react";
 interface NavigationBarProps {
   /** Hide the "New Architecture" CTA on screens where it isn't useful. */
   showNewButton?: boolean;
@@ -19,6 +20,9 @@ interface NavigationBarProps {
 
 export function NavigationBar({ showNewButton = true, rightSlot }: NavigationBarProps) {
   const { logout, isAuthenticated, user } = useAuth();
+  useEffect(() => {
+    console.log("NAVBAR RENDER")
+  }, [])
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-40 bg-cream border-b border-border-passive h-14">

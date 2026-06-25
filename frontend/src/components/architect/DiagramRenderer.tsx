@@ -54,14 +54,21 @@ export function DiagramRenderer({ id, source, className }: DiagramRendererProps)
         // Suffix the id so re-renders don't collide with prior svg nodes.
         const renderId = `${id}-${Math.random().toString(36).slice(2, 8)}`;
         const { svg } = await mermaid.render(renderId, source);
-        if (!cancelled && containerRef.current) {
-          containerRef.current.innerHTML = svg;
+        if (!cancelled) {
           setError(null);
+          // Allow DOM update in next tick
+          setTimeout(() => {
+            if (containerRef.current) {
+              containerRef.current.innerHTML = svg;
+            }
+          }, 0);
         }
-      } catch (e) {
-        // Mermaid throws on malformed source — surface a friendly fallback
-        // rather than letting the error bubble into the React tree.
-        if (!cancelled) setError("Diagram could not be rendered");
+      } catch (e: any) {
+        // Extract descriptive error details if possible
+        if (!cancelled) {
+          const errMsg = e?.message || (e && typeof e === 'object' ? JSON.stringify(e) : String(e));
+          setError(errMsg);
+        }
       }
     })();
     return () => {
@@ -71,9 +78,20 @@ export function DiagramRenderer({ id, source, className }: DiagramRendererProps)
 
   if (error) {
     return (
-      <div className="flex items-center gap-2 text-charcoal-60 text-caption p-6">
-        <AlertTriangle size={16} strokeWidth={1.5} />
-        {error}
+      <div className="flex flex-col gap-3 rounded-xl border border-error/20 bg-error/5 p-6 text-left w-full max-w-full overflow-hidden animate-fade-up">
+        <div className="flex items-center gap-2 text-error font-semibold text-[15px]">
+          <AlertTriangle size={18} strokeWidth={2} className="shrink-0" />
+          Mermaid Syntax Error
+        </div>
+        <p className="text-caption text-charcoal-70">
+          The diagram could not be rendered due to a syntax issue. You can edit the code source to fix it:
+        </p>
+        <pre className="p-4 bg-charcoal text-off-white rounded-lg font-mono text-[12px] overflow-x-auto whitespace-pre-wrap leading-relaxed max-h-56 select-text border border-charcoal/10">
+          {error}
+        </pre>
+        <p className="text-[12px] text-muted italic">
+          Tip: Check for matching quotes, valid syntax connections (like `--&gt;`), and correct direction nodes.
+        </p>
       </div>
     );
   }

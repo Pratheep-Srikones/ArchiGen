@@ -18,6 +18,7 @@ import {
 } from "@/lib/mock-data";
 import { Copy, Folder, File as FileIcon, X, Loader2, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { InteractiveDiagramCard } from "./InteractiveDiagramCard";
 
 export interface ExtraDiagram {
   id: string;
@@ -223,38 +224,22 @@ export function ArchitectureView({
             style={{ animationDelay: "240ms" }}
           >
             <h2 className="text-subsection text-charcoal mb-5">High-Level Architecture</h2>
-            <div className="rounded-xl border border-blueprint-border overflow-hidden">
-              <div className="bg-white p-6">
-                <DiagramRenderer id="main-diagram" source={data.mermaid_code} />
-              </div>
-              <div className="flex items-center justify-between bg-cream border-t border-border-passive px-5 py-3">
-                <p className="text-caption text-muted">High-level system flow</p>
-                <div className="flex items-center gap-2">
-                  <ArchButton variant="cream" size="sm">
-                    Download PNG
-                  </ArchButton>
-                  <ArchButton variant="cream" size="sm">
-                    Download SVG
-                  </ArchButton>
-                  <ArchButton variant="cream" size="sm">
-                    View Source
-                  </ArchButton>
-                </div>
-              </div>
-            </div>
+            <InteractiveDiagramCard
+              id="main-diagram"
+              title={data.title}
+              initialSource={data.mermaid_code}
+              description="High-level system flow"
+            />
 
             {extraDiagrams.map((d) => (
-              <div
+              <InteractiveDiagramCard
                 key={d.id}
-                className="mt-5 rounded-xl border border-blueprint-border overflow-hidden opacity-0 animate-fade-up"
-              >
-                <div className="bg-white p-6">
-                  <DiagramRenderer id={d.id} source={d.source} />
-                </div>
-                <div className="bg-cream border-t border-border-passive px-5 py-3">
-                  <p className="text-caption text-muted">{d.title}</p>
-                </div>
-              </div>
+                id={d.id}
+                title={d.title}
+                initialSource={d.source}
+                description={d.title}
+                className="mt-5"
+              />
             ))}
           </section>
 

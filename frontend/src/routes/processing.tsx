@@ -4,10 +4,6 @@
  * Reads the user prompt from search params, walks through AGENT_STEPS one at
  * a time with a randomized delay per step, and finally redirects to the
  * architecture detail page. If the prompt is missing we bounce back home.
- *
- * Replace the timed reducer with real progress events once the backend is in
- * place — the StepRow visuals are driven entirely by step.status, so swapping
- * the source of truth requires no UI changes.
  */
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useReducer, useRef, useState } from "react";
@@ -20,7 +16,7 @@ import {
   type ArchitectureOutput,
 } from "@/lib/mock-data";
 import { getArchitectureResponse } from "@/services/ai";
-import { Check } from "lucide-react";
+import { Check, Terminal, Layout, Layers, Cpu, GitBranch, FolderGit } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const searchSchema = z.object({ prompt: z.string().optional() });
@@ -41,11 +37,6 @@ const initialState: State = AGENT_STEPS.map((s, i) => ({
   status: (i === 0 ? "active" : "pending") as StepStatus,
 }));
 
-/**
- * Marks the currently-active step as completed and promotes the next one.
- * If all steps are completed, keeps the last one active so the UI shows
- * a pulsing "still working" state while the backend finishes.
- */
 function reducer(state: State, action: Action): State {
   if (action.type === "advance") {
     const activeIdx = state.findIndex((s) => s.status === "active");
@@ -68,6 +59,15 @@ function reducer(state: State, action: Action): State {
   }
   return state;
 }
+
+const STEP_ICONS: Record<string, React.ComponentType<any>> = {
+  analyze: Terminal,
+  macro: Layout,
+  micro: Layers,
+  stack: Cpu,
+  diagram: GitBranch,
+  repo: FolderGit,
+};
 
 function ProcessingPage() {
   const { prompt } = Route.useSearch();
@@ -96,67 +96,110 @@ function ProcessingPage() {
       });
   }, [prompt]);
 
-  // Advance the UI timeline on a timer. If every step has cycled through,
-  // reset the last step to "active" so the spinner keeps going until the
-  // backend response arrives (which can take up to a minute).
+  // Redirect immediately once the backend response is fetched
   useEffect(() => {
+    if (architecture) {
+      navigate({
+        to: "/result",
+        state: { architecture } as Record<string, unknown>,
+      });
+    }
+  }, [architecture, navigate]);
+
+  // Advance the UI timeline on a timer
+  useEffect(() => {
+    if (architecture) return;
+
     const allDone = steps.every((s) => s.status === "completed");
     if (allDone) {
-      if (architecture) {
-        // Backend finished before the animation cycled; show a brief pause
-        // then navigate.
-        const t = setTimeout(() => {
-          const navState = { architecture };
-          navigate({
-            to: "/result",
-            state: navState as Record<string, unknown>,
-          });
-        }, 600);
-        return () => clearTimeout(t);
-      }
       // Animation finished first — keep the last step pulsing.
-      const t = setTimeout(() => dispatch({ type: "activate_last" }), 800);
+      const t = setTimeout(() => dispatch({ type: "activate_last" }), 1000);
       return () => clearTimeout(t);
     }
-    const dur = 1200 + Math.random() * 1600;
+    
+    // Total of 6 steps. 60 seconds / 6 steps = ~10 seconds per step.
+    const dur = 9000 + Math.random() * 2000;
     const t = setTimeout(() => dispatch({ type: "advance" }), dur);
     return () => clearTimeout(t);
-  }, [steps, architecture, navigate]);
+  }, [steps, architecture]);
+
+  const completedCount = steps.filter((s) => s.status === "completed").length;
+  const progressPercent = Math.round((completedCount / steps.length) * 100);
 
   return (
-    <div className="min-h-screen bg-cream">
+    <div className="min-h-screen bg-cream bg-[radial-gradient(rgba(28,28,28,0.04)_1px,transparent_1px)] [background-size:20px_20px] flex flex-col">
       <NavigationBar showNewButton={false} />
-      <main className="pt-28 pb-24 px-6">
-        <div className="max-w-160 mx-auto">
-          <p className="text-caption text-muted">Generating architecture for</p>
-          <div className="mt-2 rounded-xl border border-border-passive bg-cream px-4 py-3 italic text-charcoal text-[16px] line-clamp-3">
-            {prompt}
+      <main className="flex-1 pt-28 pb-24 px-6 flex items-center justify-center">
+        <div className="max-w-xl w-full">
+          {/* Headline section */}
+          <div className="text-center mb-8">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blueprint-light border border-blueprint-border/30 text-caption font-medium text-blueprint animate-pulse">
+              <span className="w-1.5 h-1.5 rounded-full bg-blueprint" />
+              Agent Network Active
+            </span>
+            <h1 className="text-subsection font-bold text-charcoal mt-3">
+              Structuring Architecture
+            </h1>
+            <p className="text-caption text-muted mt-1 max-w-sm mx-auto">
+              Our multi-agent pipeline is analyzing requirements, selecting technologies, and drafting diagram layouts.
+            </p>
           </div>
 
-          <ol role="list" className="mt-10 rounded-xl overflow-hidden">
-            {steps.map((step, idx) => (
-              <StepRow
-                key={step.id}
-                step={step}
-                isFirst={idx === 0}
-                isLast={idx === steps.length - 1}
-                prevStatus={idx > 0 ? steps[idx - 1].status : undefined}
-              />
-            ))}
-          </ol>
+          {/* User Prompt specification card */}
+          <div className="rounded-xl border border-border-passive bg-off-white/80 backdrop-blur-sm p-5 shadow-sm mb-6">
+            <span className="text-caption text-muted font-medium flex items-center gap-2">
+              <Terminal size={14} className="text-charcoal-40" />
+              SYSTEM INPUT PROMPT
+            </span>
+            <div className="mt-3 text-[15px] italic text-charcoal line-clamp-3 pl-3 border-l border-charcoal-20">
+              "{prompt}"
+            </div>
+          </div>
 
+          {/* Pipeline Progress and Steps card */}
+          <div className="rounded-xl border border-border-passive bg-off-white/80 backdrop-blur-sm p-6 shadow-sm">
+            {/* Progress bar */}
+            <div className="mb-6">
+              <div className="flex justify-between items-center text-caption mb-2">
+                <span className="text-muted font-medium">Pipeline Progress</span>
+                <span className="font-semibold text-blueprint">{progressPercent}%</span>
+              </div>
+              <div className="h-1.5 bg-border-passive rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blueprint transition-all duration-1000 ease-out"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+            </div>
+
+            {/* List of Steps */}
+            <ol role="list" className="space-y-2">
+              {steps.map((step, idx) => (
+                <StepRow
+                  key={step.id}
+                  step={step}
+                  isFirst={idx === 0}
+                  isLast={idx === steps.length - 1}
+                  prevStatus={idx > 0 ? steps[idx - 1].status : undefined}
+                />
+              ))}
+            </ol>
+          </div>
+
+          {/* Error Message */}
           {error && (
-            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[14px] text-red-700">
+            <div className="mt-6 rounded-xl border border-error/20 bg-error/5 px-4 py-3 text-[14px] text-error font-medium">
               {error}
             </div>
           )}
 
+          {/* Cancel button */}
           <div className="mt-8 text-center">
             <button
               onClick={() => navigate({ to: "/" })}
-              className="text-caption text-muted hover:text-charcoal"
+              className="text-caption text-muted hover:text-charcoal underline underline-offset-4 decoration-border-passive transition-colors"
             >
-              Cancel generation
+              Cancel generation and return
             </button>
           </div>
         </div>
@@ -175,18 +218,23 @@ interface StepRowProps {
 function StepRow({ step, isFirst, isLast, prevStatus }: StepRowProps) {
   const isActive = step.status === "active";
   const isCompleted = step.status === "completed";
+  const isPending = step.status === "pending";
 
+  const IconComponent = STEP_ICONS[step.id] || Terminal;
+
+  // Timeline line styles
   const topLineClass = !isFirst
     ? prevStatus === "completed"
-      ? isActive
-        ? "bg-blueprint w-[2px]"
-        : "bg-success w-[1px]"
-      : "bg-border-passive w-[1px]"
+      ? "bg-success w-[2px]"
+      : isActive
+      ? "bg-blueprint w-[2px] animate-pulse"
+      : "bg-border-passive w-[2px]"
     : "";
+
   const bottomLineClass = !isLast
     ? isCompleted
-      ? "bg-success w-[1px]"
-      : "bg-border-passive w-[1px]"
+      ? "bg-success w-[2px]"
+      : "bg-border-passive w-[2px]"
     : "";
 
   return (
@@ -194,37 +242,66 @@ function StepRow({ step, isFirst, isLast, prevStatus }: StepRowProps) {
       role="listitem"
       aria-label={`${step.label} — ${step.status}`}
       className={cn(
-        "relative flex items-stretch px-4",
-        isActive && "bg-blueprint-light border-l-[3px] border-blueprint pl-3.25",
+        "relative flex items-start gap-6 px-6 py-4 transition-all duration-500 rounded-xl border border-transparent",
+        isActive && "bg-blueprint-light/40 border-blueprint-border/30 shadow-sm",
+        isCompleted && "bg-charcoal-03/20",
       )}
     >
-      <div className="w-6 flex flex-col items-center shrink-0">
-        <div className={cn("flex-1", topLineClass)} />
-        <div className="my-1 flex items-center justify-center">
-          {step.status === "pending" && (
-            <div className="w-2.5 h-2.5 rounded-full border border-charcoal-20" />
+      {/* Timeline Circle and Lines */}
+      <div className="relative flex flex-col items-center shrink-0 self-stretch min-h-[4.5rem]">
+        {/* Top Connecting Line */}
+        {!isFirst && (
+          <div className={cn("absolute top-0 bottom-1/2 left-1/2 -translate-x-1/2 z-0", topLineClass)} />
+        )}
+
+        {/* The Icon Container */}
+        <div className="relative z-10 my-auto flex items-center justify-center">
+          {isPending && (
+            <div className="w-10 h-10 rounded-full border border-border-passive bg-cream flex items-center justify-center text-charcoal-30">
+              <IconComponent size={18} strokeWidth={1.5} />
+            </div>
           )}
-          {isActive && <div className="w-2.5 h-2.5 rounded-full bg-blueprint animate-step-pulse" />}
+          {isActive && (
+            <div className="relative w-10 h-10 rounded-full bg-blueprint-light flex items-center justify-center text-blueprint border border-blueprint/30">
+              {/* Spinning outer dotted ring */}
+              <div className="absolute inset-[-4px] rounded-full border border-dashed border-blueprint animate-spin" style={{ animationDuration: '8s' }} />
+              <IconComponent size={18} strokeWidth={2} className="animate-pulse" />
+            </div>
+          )}
           {isCompleted && (
-            <div className="w-3.5 h-3.5 rounded-full bg-success flex items-center justify-center">
-              <Check size={9} strokeWidth={3} className="text-white" />
+            <div className="w-10 h-10 rounded-full bg-success/10 border border-success/30 flex items-center justify-center text-success animate-fade-up">
+              <Check size={18} strokeWidth={2.5} />
             </div>
           )}
         </div>
-        <div className={cn("flex-1", bottomLineClass)} />
+
+        {/* Bottom Connecting Line */}
+        {!isLast && (
+          <div className={cn("absolute top-1/2 bottom-0 left-1/2 -translate-x-1/2 z-0", bottomLineClass)} />
+        )}
       </div>
-      <div className="flex-1 ml-4 py-3.5">
-        <p
+
+      {/* Step Description */}
+      <div className="flex-1 min-w-0 py-2">
+        <h3
           className={cn(
-            "text-[16px]",
+            "text-[16px] font-medium transition-colors duration-300",
             isActive && "text-charcoal",
-            isCompleted && "text-charcoal-60",
-            step.status === "pending" && "text-muted",
+            isCompleted && "text-charcoal-40",
+            isPending && "text-muted",
           )}
         >
           {step.label}
-        </p>
-        {isActive && <p className="text-caption text-muted mt-1">{step.subMessage}</p>}
+        </h3>
+        {/* Expand explanation when active */}
+        <div
+          className={cn(
+            "overflow-hidden transition-all duration-500 ease-in-out",
+            isActive ? "max-h-20 mt-1 opacity-100 animate-fade-up" : "max-h-0 opacity-0",
+          )}
+        >
+          <p className="text-caption text-muted">{step.subMessage}</p>
+        </div>
       </div>
     </li>
   );

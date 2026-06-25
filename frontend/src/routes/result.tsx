@@ -12,12 +12,12 @@ import { ArchitectureView } from "@/components/architect/ArchitectureView";
 import { MOCK_ARCHITECTURE } from "@/lib/mock-data";
 import type { ArchitectureOutput } from "@/lib/mock-data";
 import { CheckingAuthentication } from "@/components/auth/CheckingAuthentication";
-import { Loading } from "@/components/Loading";
 import { useAuthStore } from "@/store/useAuthStore";
 import NotAuthenticated from "@/components/auth/NotAuthenticated";
 import { useAuth } from "@/hooks/use-auth";
 import { createProject, CreateProjectRequest } from "@/services/project";
 import { useEffect } from "react";
+import { InvalidAccess } from "@/components/architect/InvalidAccess";
 
 export interface ArchitectureLocationState {
   architecture?: ArchitectureOutput;
@@ -39,6 +39,11 @@ function ResultPage() {
   const state = location.state as ArchitectureLocationState | undefined;
   const data = state?.architecture ?? MOCK_ARCHITECTURE;
 
+  useEffect(() => {
+    console.log("RESULT PAGE RENDER");
+  }, []);
+
+
   if (loading) {
     return <CheckingAuthentication />;
   }
@@ -48,14 +53,8 @@ function ResultPage() {
   }
 
   if (!state?.architecture) {
-    return null;
+    return <InvalidAccess />;
   }
-
-  useEffect(() => {
-    if (!loading && isAuthenticated && !state?.architecture) {
-      navigate({ to: "/dashboard" });
-    }
-  }, [loading, isAuthenticated, state, navigate]);
 
   const handleSave = async () => {
     const user_id = user?.id ?? "";

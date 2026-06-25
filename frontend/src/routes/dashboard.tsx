@@ -43,9 +43,7 @@ const SUGGESTIONS = [
 ];
 
 function DashboardPage() {
-  useEffect(() => {
-    console.log("NAVBAR RENDER");
-  }, []);
+
 
   const { isAuthenticated, loading } = useAuthStore();
   const { user } = useAuth();

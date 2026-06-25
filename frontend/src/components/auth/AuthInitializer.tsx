@@ -3,38 +3,42 @@ import { useAuthContext } from "@asgardeo/auth-react";
 import { useAuthStore } from "@/store/useAuthStore";
 
 export default function AuthInitializer() {
-  const { state, getBasicUserInfo, getDecodedIDToken } = useAuthContext();
+  const { state, getBasicUserInfo, getDecodedIDToken, getAccessToken } = useAuthContext();
 
-  const { setAuth, setLoading } = useAuthStore();
+  const {  setLoading, clearAuth, setAuthSession } = useAuthStore();
 
   useEffect(() => {
-    async function initialize() {
+    async function initializeAuth() {
       try {
         setLoading(true);
 
         if (!state.isAuthenticated) {
-          setAuth(null);
+          clearAuth();
           return;
         }
 
-        const userInfo = await getBasicUserInfo();
-        const token = await getDecodedIDToken();
+        const [userInfo, decodedToken, accessToken] = await Promise.all([
+          getBasicUserInfo(),
+          getDecodedIDToken(),
+          getAccessToken(),
+        ]);
 
-        setAuth({
-          id: token.sub,
+        setAuthSession({
+          id: decodedToken.sub,
           username: userInfo.username!,
-          fullName: token.name,
-          picture: token.picture,
-        });
+          fullName: decodedToken.name,
+          picture: decodedToken.picture,
+        }, accessToken);
+       
       } catch (error) {
         console.error("Error initializing auth:", error);
-        setAuth(null);
+        clearAuth();
       } finally {
         setLoading(false);
       }
     }
 
-    initialize();
+    initializeAuth();
   }, [state]);
 
   return null;

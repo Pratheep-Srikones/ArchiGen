@@ -20,9 +20,6 @@ interface NavigationBarProps {
 
 export function NavigationBar({ showNewButton = true, rightSlot }: NavigationBarProps) {
   const { logout, isAuthenticated, user } = useAuth();
-  useEffect(() => {
-    console.log("NAVBAR RENDER");
-  }, []);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-40 bg-cream border-b border-border-passive h-14">

@@ -39,10 +39,6 @@ function ResultPage() {
   const state = location.state as ArchitectureLocationState | undefined;
   const data = state?.architecture ?? MOCK_ARCHITECTURE;
 
-  useEffect(() => {
-    console.log("RESULT PAGE RENDER");
-  }, []);
-
   if (loading) {
     return <CheckingAuthentication />;
   }

@@ -27,7 +27,6 @@ export type GetProjectResponse = {
 export const createProject = async (projectData: CreateProjectRequest) => {
   try {
     const response = await projectApi.post("/projects", projectData);
-    console.log("Project created successfully:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error creating project:", error);

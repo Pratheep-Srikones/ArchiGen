@@ -152,10 +152,10 @@ async def save_project_and_architecture(payload: ProjectSaveRequest, user_id: st
             detail="Database error",
         )
 
-async def update_architecture(payload: ProjectSaveRequest, user_id: str, db: AsyncSession):
+async def update_architecture(project_id: str, mermaid_code: str, user_id: str, db: AsyncSession):
     try:
         user_uuid = uuid.UUID(user_id)
-        project_uuid = uuid.UUID(payload.project_id)
+        project_uuid = uuid.UUID(project_id)
 
         architecture = await db.execute(
             select(Architecture)
@@ -168,15 +168,7 @@ async def update_architecture(payload: ProjectSaveRequest, user_id: str, db: Asy
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Architecture not found",
             )
-
-        architecture.title = payload.title
-        architecture.requirements = payload.requirements
-        architecture.architecture = payload.architecture
-        architecture.mermaid_code = payload.mermaid_code
-        architecture.micro = [item.model_dump() for item in payload.micro]
-        architecture.tech_stack = [item.model_dump() for item in payload.tech_stack]
-        architecture.repo = [item.model_dump() for item in payload.repo]
-
+        architecture.mermaid_code = mermaid_code
         await db.commit()
 
         return {

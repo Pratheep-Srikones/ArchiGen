@@ -4,12 +4,13 @@
  * Fetches the project architecture by ID from the backend.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavigationBar } from "@/components/architect/NavigationBar";
 import { ArchitectureView } from "@/components/architect/ArchitectureView";
 import type { ArchitectureOutput } from "@/lib/mock-data";
-import { getArchitecture } from "@/services/project";
+import { getArchitecture, updateArchitectureMermaidCode } from "@/services/project";
 import { Loading } from "@/components/Loading";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/architecture/$projectId")({
   component: ArchitecturePage,
@@ -36,7 +37,14 @@ function useProject(projectId: string) {
 
 function ArchitecturePage() {
   const { projectId } = Route.useParams();
+  const queryClient = useQueryClient();
   const query = useProject(projectId);
+
+  const handleUpdateMermaidCode = async (_projectId: string, mermaidCode: string) => {
+    await updateArchitectureMermaidCode(_projectId, mermaidCode);
+    toast.success("Diagram updated successfully");
+    await queryClient.invalidateQueries({ queryKey: ["project", "architecture", _projectId] });
+  };
 
   if (query.isLoading) {
     return (
@@ -61,7 +69,12 @@ function ArchitecturePage() {
   return (
     <div className="min-h-screen bg-cream">
       <NavigationBar showNewButton />
-      <ArchitectureView data={query.data} isTemporary={false} />
+      <ArchitectureView
+        data={query.data}
+        isTemporary={false}
+        projectId={projectId}
+        onUpdateMermaidCode={handleUpdateMermaidCode}
+      />
     </div>
   );
 }

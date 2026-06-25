@@ -3,8 +3,7 @@
  * document: sticky project header, section tabs, and all content sections.
  *
  * Used by both the persisted `/architecture/$projectId` route and the
- * temporary `/result` post-generation route. Does NOT include NavigationBar,
- * route logic, or data fetching — those belong to the calling page.
+ * temporary `/result` post-generation route.
  */
 import { useEffect, useRef, useState } from "react";
 import { DiagramRenderer } from "./DiagramRenderer";
@@ -16,9 +15,10 @@ import {
   type RepoNode,
   type TechItem,
 } from "@/lib/mock-data";
-import { Copy, Folder, File as FileIcon, X, Loader2, Download } from "lucide-react";
+import { Copy, Folder, File as FileIcon, X, Loader2, Download, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InteractiveDiagramCard } from "./InteractiveDiagramCard";
+import { toast } from "sonner";
 
 export interface ExtraDiagram {
   id: string;
@@ -31,6 +31,8 @@ export interface ArchitectureViewProps {
   isTemporary?: boolean;
   isLoading?: boolean;
   onSave?: () => void;
+  projectId?: string;
+  onUpdateMermaidCode?: (projectId: string, mermaidCode: string) => Promise<void>;
 }
 
 const SECTIONS = [
@@ -55,15 +57,16 @@ export function ArchitectureView({
   isTemporary = false,
   isLoading = false,
   onSave,
+  projectId,
+  onUpdateMermaidCode,
 }: ArchitectureViewProps) {
   const [activeSection, setActiveSection] = useState<string>("macro");
   const [modalOpen, setModalOpen] = useState(false);
   const [extraDiagrams, setExtraDiagrams] = useState<ExtraDiagram[]>([]);
+  const [dirtyMermaidCode, setDirtyMermaidCode] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
-  // Sync the highlighted tab with whichever section is most prominently in
-  // view. The negative top rootMargin offsets the sticky header so a section
-  // is only "active" once it scrolls past the header band.
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -85,9 +88,29 @@ export function ArchitectureView({
     sectionRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const handleMainDiagramChange = (newSource: string) => {
+    if (newSource !== data.mermaid_code) {
+      setDirtyMermaidCode(newSource);
+    } else {
+      setDirtyMermaidCode(null);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!projectId || !dirtyMermaidCode || !onUpdateMermaidCode) return;
+    setIsUpdating(true);
+    try {
+      await onUpdateMermaidCode(projectId, dirtyMermaidCode);
+      setDirtyMermaidCode(null);
+    } catch {
+      toast.error("Failed to update diagram");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-cream">
-      {/* Project header */}
       <div className="fixed top-14 left-0 right-0 z-30 bg-cream border-b border-border-passive">
         <div className="max-w-300 mx-auto px-6 py-3 flex items-center justify-between gap-6">
           <div className="min-w-0">
@@ -104,12 +127,31 @@ export function ArchitectureView({
                 <ArchButton variant="ghost" size="sm">
                   Share
                 </ArchButton>
+                {dirtyMermaidCode !== null && (
+                  <ArchButton
+                    variant="primary"
+                    size="sm"
+                    onClick={handleUpdate}
+                    disabled={isUpdating}
+                  >
+                    {isUpdating ? (
+                      <>
+                        <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
+                        Updating…
+                      </>
+                    ) : (
+                      <>
+                        <Pencil size={14} strokeWidth={1.5} />
+                        Update
+                      </>
+                    )}
+                  </ArchButton>
+                )}
               </>
             )}
           </div>
         </div>
 
-        {/* Temporary project banner */}
         {isTemporary && (
           <div className="border-t border-border-passive bg-blueprint-light px-6 py-2">
             <p className="text-caption text-charcoal-70 max-w-300 mx-auto">
@@ -118,7 +160,6 @@ export function ArchitectureView({
           </div>
         )}
 
-        {/* Section tabs */}
         <div className="border-t border-border-passive">
           <div
             className="max-w-300 mx-auto px-6 flex items-center gap-6 overflow-x-auto"
@@ -149,7 +190,6 @@ export function ArchitectureView({
 
       <main className="pt-45 pb-32 px-6">
         <div className="max-w-225 mx-auto flex flex-col gap-10">
-          {/* Macro */}
           <section
             id="macro"
             ref={(el) => {
@@ -172,7 +212,6 @@ export function ArchitectureView({
             </div>
           </section>
 
-          {/* Micro */}
           <section
             id="micro"
             ref={(el) => {
@@ -197,7 +236,6 @@ export function ArchitectureView({
             </div>
           </section>
 
-          {/* Tech Stack */}
           <section
             id="stack"
             ref={(el) => {
@@ -214,7 +252,6 @@ export function ArchitectureView({
             </div>
           </section>
 
-          {/* Diagram */}
           <section
             id="diagram"
             ref={(el) => {
@@ -228,7 +265,13 @@ export function ArchitectureView({
               id="main-diagram"
               title={data.title}
               initialSource={data.mermaid_code}
-              description="High-level system flow"
+              description={
+                dirtyMermaidCode !== null
+                  ? "Unsaved changes — click Update to save"
+                  : "High-level system flow"
+              }
+              onSourceChange={handleMainDiagramChange}
+              isDirty={dirtyMermaidCode !== null}
             />
 
             {extraDiagrams.map((d) => (
@@ -243,7 +286,6 @@ export function ArchitectureView({
             ))}
           </section>
 
-          {/* Repo */}
           <section
             id="repo"
             ref={(el) => {
@@ -265,7 +307,6 @@ export function ArchitectureView({
             </div>
           </section>
 
-          {/* CTA */}
           <div className="flex justify-center mt-12">
             <div className="max-w-140 w-full text-center rounded-xl border border-dashed border-charcoal-20 p-8">
               <h3 className="text-card-title text-charcoal">Need a specific diagram?</h3>
@@ -344,8 +385,6 @@ function DiagramModal({
   const [state, setState] = useState<"idle" | "generating" | "generated">("idle");
   const [iteration, setIteration] = useState(0);
 
-  // Auto-kick the simulated generation when the modal first opens so the
-  // user sees a result without having to press a button.
   useEffect(() => {
     setState("generating");
     const t = setTimeout(() => {

@@ -28,3 +28,6 @@ class ProjectSaveRequest(BaseModel):
     micro: List[MicroSectionSchema]
     tech_stack: List[TechItemSchema]
     repo: List[RepoNodeSchema]
+
+class UpdateMermaidCodeRequest(BaseModel):
+    mermaid_code: str

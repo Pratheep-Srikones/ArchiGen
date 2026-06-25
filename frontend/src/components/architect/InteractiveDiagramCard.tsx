@@ -11,6 +11,8 @@ interface InteractiveDiagramCardProps {
   initialSource: string;
   description?: string;
   className?: string;
+  onSourceChange?: (source: string) => void;
+  isDirty?: boolean;
 }
 
 export function InteractiveDiagramCard({
@@ -19,13 +21,14 @@ export function InteractiveDiagramCard({
   initialSource,
   description = "Architecture diagram flow",
   className,
+  onSourceChange,
+  isDirty,
 }: InteractiveDiagramCardProps) {
   const [source, setSource] = useState(initialSource);
   const [showSource, setShowSource] = useState(false);
   const [copied, setCopied] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Keep source in sync if the initialSource prop changes
   useEffect(() => {
     setSource(initialSource);
   }, [initialSource]);
@@ -48,13 +51,16 @@ export function InteractiveDiagramCard({
     downloadSvg(containerRef.current, title);
   };
 
+  const handleSourceChange = (value: string) => {
+    setSource(value);
+    onSourceChange?.(value);
+  };
+
   return (
     <div className={cn("flex flex-col gap-3", className)}>
       <div className="rounded-xl border border-blueprint-border overflow-hidden bg-off-white shadow-sm flex flex-col">
-        {/* Main Display Area */}
         {showSource ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[450px]">
-            {/* Editor Pane (Column 1-5) */}
             <div className="lg:col-span-5 flex flex-col border-b lg:border-b-0 lg:border-r border-border-passive bg-charcoal-03/40">
               <div className="flex items-center justify-between px-4 py-2.5 bg-cream/70 border-b border-border-passive">
                 <span className="text-caption font-semibold text-charcoal flex items-center gap-1.5">
@@ -81,7 +87,7 @@ export function InteractiveDiagramCard({
               </div>
               <textarea
                 value={source}
-                onChange={(e) => setSource(e.target.value)}
+                onChange={(e) => handleSourceChange(e.target.value)}
                 spellCheck={false}
                 className="flex-1 w-full p-4 font-mono text-[13px] bg-transparent text-charcoal resize-none outline-none focus:ring-0 leading-relaxed min-h-[250px] lg:min-h-0"
                 placeholder="Enter Mermaid diagram code here..."
@@ -92,7 +98,6 @@ export function InteractiveDiagramCard({
               </div>
             </div>
 
-            {/* Rendering Preview Pane (Column 6-12) */}
             <div className="lg:col-span-7 flex flex-col bg-white">
               <div className="flex items-center px-4 py-2.5 bg-cream/70 border-b border-border-passive lg:border-b">
                 <span className="text-caption font-semibold text-charcoal flex items-center gap-1.5">
@@ -109,7 +114,6 @@ export function InteractiveDiagramCard({
             </div>
           </div>
         ) : (
-          /* Normal Display Box (Editor hidden) */
           <div className="bg-white p-6 flex justify-center items-center min-h-[350px] overflow-auto">
             <div ref={containerRef} className="w-full flex items-center justify-center">
               <DiagramRenderer id={`view-${id}`} source={source} />
@@ -117,9 +121,10 @@ export function InteractiveDiagramCard({
           </div>
         )}
 
-        {/* Footer Actions Panel */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between bg-cream border-t border-border-passive px-5 py-3 gap-3">
-          <p className="text-caption text-muted font-medium truncate">{description}</p>
+          <p className="text-caption text-muted font-medium truncate">
+            {isDirty ? "Unsaved changes" : description}
+          </p>
           <div className="flex flex-wrap items-center gap-2">
             <ArchButton
               variant="cream"

@@ -39,7 +39,6 @@ export const readProjects = async (
   limit: number = 6,
   search: string = "",
 ): Promise<GetProjectResponse> => {
-
   try {
     const response = await projectApi.get(`/projects`, {
       params: { start, count: limit, search },
@@ -59,6 +58,18 @@ export const getArchitecture = async (project_id: string) => {
     return result;
   } catch (error) {
     console.error("Error fetching architecture:", error);
+    throw error;
+  }
+};
+
+export const updateArchitectureMermaidCode = async (project_id: string, mermaid_code: string) => {
+  try {
+    const response = await projectApi.patch(`/projects/${project_id}/architecture`, {
+      mermaid_code,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error updating architecture:", error);
     throw error;
   }
 };

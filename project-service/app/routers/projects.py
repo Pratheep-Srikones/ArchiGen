@@ -1,3 +1,4 @@
+from app.schemas.architecture import UpdateMermaidCodeRequest
 from app.security.dependencies import verify_token
 from fastapi import Query
 from typing import Optional
@@ -40,9 +41,9 @@ async def save_project_and_architecture(payload: ProjectSaveRequest, db: AsyncSe
     user_id = user.get("sub")
     return await save_project_and_architecture_controller(payload, user_id, db)
 
-@router.put("/{project_id}")
-async def update_architecture(project_id: str, payload: ProjectSaveRequest, db: AsyncSession = Depends(get_db_session), user= Depends(verify_token)):
+@router.patch("/{project_id}/architecture")
+async def update_architecture(project_id: str, payload: UpdateMermaidCodeRequest, db: AsyncSession = Depends(get_db_session), user= Depends(verify_token)):
     user_id = user.get("sub")
-    return await update_architecture_controller(project_id, payload, user_id, db)
+    return await update_architecture_controller(project_id, payload.mermaid_code, user_id, db)
         
      

@@ -1,8 +1,8 @@
-import { axiosInstance } from "@/config/axiosConfig";
+import { aiApi } from "@/config/axiosConfig";
 
 export const getArchitectureResponse = async (prompt: string) => {
   try {
-    const response = await axiosInstance.post("/ai/generate-architecture", {
+    const response = await aiApi.post("/ai/generate-architecture", {
       user_idea: prompt,
     });
     console.log("Architecture response received:", response.data);

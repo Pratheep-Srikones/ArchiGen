@@ -14,6 +14,10 @@ import type { ArchitectureOutput } from "@/lib/mock-data";
 import { CheckingAuthentication } from "@/components/auth/CheckingAuthentication";
 import { Loading } from "@/components/Loading";
 import { useAuthStore } from "@/store/useAuthStore";
+import NotAuthenticated from "@/components/auth/NotAuthenticated";
+import { useAuth } from "@/hooks/use-auth";
+import { createProject, CreateProjectRequest } from "@/services/project";
+import { useEffect } from "react";
 
 export interface ArchitectureLocationState {
   architecture?: ArchitectureOutput;
@@ -27,6 +31,7 @@ export const Route = createFileRoute("/result")({
 });
 
 function ResultPage() {
+  const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { isAuthenticated, loading } = useAuthStore();
@@ -39,19 +44,43 @@ function ResultPage() {
   }
 
   if (!isAuthenticated) {
-    return <Loading fullScreen label="Redirecting to sign in…" />;
+    return <NotAuthenticated />;
   }
 
   if (!state?.architecture) {
-    // No architecture data in state — bounce to workspace.
-    navigate({ to: "/dashboard" });
     return null;
   }
 
-  const handleSave = () => {
-    // TODO: wire up real save endpoint. For now, show a success toast
-    // and navigate to /dashboard. In a later iteration this navigates to
-    // the newly saved project's /architecture/$projectId page.
+  useEffect(() => {
+    if (!loading && isAuthenticated && !state?.architecture) {
+      navigate({ to: "/dashboard" });
+    }
+  }, [loading, isAuthenticated, state, navigate]);
+
+  const handleSave = async () => {
+    const user_id = user?.id ?? "";
+    if (!user_id) {
+      toast.error("User ID not found. Please log in again.");
+      return;
+    }
+
+    const projectData: CreateProjectRequest = {
+      user_id,
+      project_id: data?.projectId!,
+      title: data?.title ?? "Untitled Project",
+      requirements: data?.requirements ?? "",
+      architecture: data?.architecture ?? "",
+      mermaid_code: data?.mermaid_code ?? "",
+      micro: data?.micro ?? [],
+      tech_stack: data?.tech_stack ?? [],
+      repo: data?.repo ?? [],
+    };
+    try {
+      await createProject(projectData);
+    } catch (error) {
+      toast.error("Failed to save project.");
+      return;
+    }
     toast.success("Project saved");
     navigate({ to: "/dashboard" });
   };

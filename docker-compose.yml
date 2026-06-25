@@ -12,5 +12,40 @@ services:
     volumes:
       - project_data:/var/lib/postgresql/data
 
+  agent_service:
+    build:
+      context: ./agent-service
+      dockerfile: Dockerfile
+    container_name: agent_service
+    restart: unless-stopped
+    ports:
+      - "${AGENT_SERVICE_PORT}:8000"
+    env_file:
+      - ./agent-service/.env
+
+  project_service:
+    build:
+      context: ./project-service
+      dockerfile: Dockerfile
+    container_name: project_service
+    restart: unless-stopped
+    ports:
+      - "${PROJECT_SERVICE_PORT}:8001"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${PROJECT_DB_USER}:${PROJECT_DB_PASSWORD}@project_db:5432/${PROJECT_DB_NAME}
+    depends_on:
+      - project_db
+
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile.dev
+  #   container_name: frontend
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${FRONTEND_PORT}:5173"
+  #   env_file:
+  #     - .env
+
 volumes:
   project_data:

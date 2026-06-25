@@ -33,7 +33,7 @@ class Architecture(Base):
     __tablename__ = "architectures"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", on_delete="CASCADE"), unique=True)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), unique=True)
     
     title: Mapped[str] = mapped_column(VARCHAR(255), nullable=False)
     requirements: Mapped[str] = mapped_column(Text, nullable=False)

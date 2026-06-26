@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+# pyrefly: ignore [missing-import]
 from google.genai import types
 
 
@@ -9,6 +10,8 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_API_KEY_2 = os.getenv("GEMINI_API_KEY_2")
 PORT = int(os.getenv("PORT", 8010))
 APP_NAME = "agents"
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 
 AGENT_RETRY_OPTIONS=types.HttpRetryOptions(
     attempts=5,  # Maximum retry attempts
@@ -31,6 +34,8 @@ class Config:
         self.port = PORT
         self.agent_retry_options = AGENT_RETRY_OPTIONS
         self.app_name = APP_NAME
+        self.redis_host = REDIS_HOST 
+        self.redis_port = REDIS_PORT
 
 
 config = Config()

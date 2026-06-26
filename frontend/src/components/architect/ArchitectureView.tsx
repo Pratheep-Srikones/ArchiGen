@@ -18,6 +18,8 @@ import {
 import { Copy, Folder, File as FileIcon, X, Loader2, Download, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InteractiveDiagramCard } from "./InteractiveDiagramCard";
+import { AskAIButton } from "./AskAIButton";
+import { ChatDrawer } from "@/components/chat/ChatDrawer";
 import { toast } from "sonner";
 
 export interface ExtraDiagram {
@@ -118,15 +120,17 @@ export function ArchitectureView({
             <p className="text-caption text-muted italic truncate">{data.requirements}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {isTemporary ? (
+            {isTemporary && (
               <ArchButton variant="primary" size="sm" onClick={onSave}>
                 Save Project
               </ArchButton>
-            ) : (
+            )}
+            {!isTemporary && projectId && (
               <>
                 <ArchButton variant="ghost" size="sm">
                   Share
                 </ArchButton>
+                <AskAIButton projectId={projectId} architecture={data} />
                 {dirtyMermaidCode !== null && (
                   <ArchButton
                     variant="primary"
@@ -332,6 +336,7 @@ export function ArchitectureView({
           }}
         />
       )}
+      {projectId && <ChatDrawer projectId={projectId} />}
     </div>
   );
 }

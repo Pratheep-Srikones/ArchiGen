@@ -1,11 +1,15 @@
 from app.utils.auth import get_current_user_id
 from app.schemas.architecture import UpdateMermaidCodeRequest
+# pyrefly: ignore [missing-import]
 from fastapi import Query
 from typing import Optional
 from app.db.database import get_db_session
+# pyrefly: ignore [missing-import]
 from fastapi import Depends
+# pyrefly: ignore [missing-import]
 from sqlalchemy.ext.asyncio.session import AsyncSession
 from app.schemas.architecture import ProjectSaveRequest
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter
 from app.controllers.projects import (
     get_architecture_by_project_id as get_architecture_by_project_id_controller,
@@ -40,7 +44,6 @@ async def save_project_and_architecture(payload: ProjectSaveRequest, db: AsyncSe
 
 @router.patch("/{project_id}/architecture")
 async def update_architecture(project_id: str, payload: UpdateMermaidCodeRequest, db: AsyncSession = Depends(get_db_session), user_id= Depends(get_current_user_id)):
-    user_id = user.get("sub")
     return await update_architecture_controller(project_id, payload.mermaid_code, user_id, db)
         
      

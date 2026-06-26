@@ -1,12 +1,18 @@
+from app.config.redis import connect_redis, close_redis
+from contextlib import asynccontextmanager
 import sys
 import os
 
 # Add the parent directory to Python path so 'app' module can be found
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# pyrefly: ignore [missing-import]
 from fastapi import FastAPI
+# pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
+# pyrefly: ignore [missing-import]
 from fastapi.responses import JSONResponse
+# pyrefly: ignore [missing-import]
 from fastapi import Request
 
 from app.exceptions.architecture_exceptions import InvalidInputError, AIServiceError, ArchitectureError
@@ -15,9 +21,15 @@ from app.routers.chat_routes import router as chat_router
 
 allowed_origins = ["http://localhost:5173"]
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await connect_redis()
+    yield
+    await close_redis()
 
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,

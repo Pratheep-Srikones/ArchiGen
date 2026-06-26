@@ -1,5 +1,5 @@
+from app.utils.auth import get_current_user_id
 from app.schemas.architecture import UpdateMermaidCodeRequest
-from app.security.dependencies import verify_token
 from fastapi import Query
 from typing import Optional
 from app.db.database import get_db_session
@@ -22,27 +22,24 @@ async def get_projects(
     count: int = Query(6, ge=1, le=100),
     search: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db_session),
-    user= Depends(verify_token)
+    user_id= Depends(get_current_user_id)
 ):
-    user_id = user.get("sub")
     return await get_projects_controller(user_id, start, count, search, db)
 
 @router.get("/architecture/{project_id}")
 async def get_architecture_by_project_id(
     project_id: str, 
     db: AsyncSession = Depends(get_db_session),
-    user= Depends(verify_token)
+    user_id= Depends(get_current_user_id)
 ):
-    user_id = user.get("sub")
     return await get_architecture_by_project_id_controller(project_id, user_id, db)
 
 @router.post("/")
-async def save_project_and_architecture(payload: ProjectSaveRequest, db: AsyncSession = Depends(get_db_session), user= Depends(verify_token)):
-    user_id = user.get("sub")
+async def save_project_and_architecture(payload: ProjectSaveRequest, db: AsyncSession = Depends(get_db_session), user_id= Depends(get_current_user_id)):
     return await save_project_and_architecture_controller(payload, user_id, db)
 
 @router.patch("/{project_id}/architecture")
-async def update_architecture(project_id: str, payload: UpdateMermaidCodeRequest, db: AsyncSession = Depends(get_db_session), user= Depends(verify_token)):
+async def update_architecture(project_id: str, payload: UpdateMermaidCodeRequest, db: AsyncSession = Depends(get_db_session), user_id= Depends(get_current_user_id)):
     user_id = user.get("sub")
     return await update_architecture_controller(project_id, payload.mermaid_code, user_id, db)
         

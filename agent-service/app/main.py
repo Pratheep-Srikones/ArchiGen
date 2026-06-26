@@ -60,9 +60,9 @@ async def architecture_base_handler(request: Request, exc: ArchitectureError):
         },
     )
 
-app.include_router(ai_router,prefix="/ai")
-app.include_router(chat_router,prefix="/ai")
+app.include_router(ai_router)
+app.include_router(chat_router)
 
-@app.get("/")
-async def root():
-    return {"message": "Welcome to the Agent Service API"}
+@app.get("/health")
+async def health_check():
+    return {"message": "Agent service is healthy"}

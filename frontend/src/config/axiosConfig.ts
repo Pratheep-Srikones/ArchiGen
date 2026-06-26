@@ -1,8 +1,7 @@
 import { useAuthStore } from "@/store/useAuthStore";
 import axios, { AxiosInstance } from "axios";
 
-const aiServiceUrl = import.meta.env.VITE_AI_SERVICE_URL || "http://localhost:8000";
-const projectServiceUrl = import.meta.env.VITE_PROJECT_SERVICE_URL || "http://localhost:8001";
+const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8002/api"
 
 const attachAuthInterceptor = (client: AxiosInstance) => {
   client.interceptors.request.use((config) => {
@@ -16,13 +15,8 @@ const attachAuthInterceptor = (client: AxiosInstance) => {
   });
 };
 
-export const aiApi = axios.create({
-  baseURL: aiServiceUrl,
+export const api = axios.create({
+  baseURL: apiUrl,
 });
 
-export const projectApi = axios.create({
-  baseURL: projectServiceUrl,
-});
-
-attachAuthInterceptor(aiApi);
-attachAuthInterceptor(projectApi);
+attachAuthInterceptor(api)

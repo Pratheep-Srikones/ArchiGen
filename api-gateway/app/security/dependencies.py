@@ -2,8 +2,11 @@ import jwt
 from app.security.jwks import get_signing_key
 from app.security.config import CLIENT_ID, ASGARDEO_ISSUER
 
-from fastapi import Depends, HTTPException, status
+# pyrefly: ignore [missing-import]
+from fastapi import Depends, HTTPException
+# pyrefly: ignore [missing-import]
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
 
 security = HTTPBearer()
 
@@ -11,7 +14,9 @@ async def verify_token(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     token = credentials.credentials
+    return verify_token_string(token)
 
+def verify_token_string(token: str):
     try:
         signing_key = get_signing_key(token)
 
@@ -22,7 +27,6 @@ async def verify_token(
             audience=CLIENT_ID,
             issuer=ASGARDEO_ISSUER,
         )
-        print("Token payload: ",payload)
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")

@@ -20,8 +20,8 @@ async def startup_event():
         # Warning: This is great for dev, but use migrations (Alembic) for production!
         await conn.run_sync(Base.metadata.create_all)
         
-app.include_router(projects_router, prefix="/projects")
+app.include_router(projects_router)
  
-@app.get("/")
+@app.get("/health")
 async def root():
     return {"message": "Welcome to the Project Service API"}

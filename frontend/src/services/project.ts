@@ -1,4 +1,4 @@
-import { projectApi } from "@/config/axiosConfig";
+import { api } from "@/config/axiosConfig";
 import type {
   ArchitectureOutput,
   MicroSection,
@@ -26,7 +26,7 @@ export type GetProjectResponse = {
 
 export const createProject = async (projectData: CreateProjectRequest) => {
   try {
-    const response = await projectApi.post("/projects", projectData);
+    const response = await api.post("/projects", projectData);
     return response.data;
   } catch (error) {
     console.error("Error creating project:", error);
@@ -40,7 +40,7 @@ export const readProjects = async (
   search: string = "",
 ): Promise<GetProjectResponse> => {
   try {
-    const response = await projectApi.get(`/projects`, {
+    const response = await api.get(`/projects`, {
       params: { start, count: limit, search },
     });
     const result: GetProjectResponse = response.data.data;
@@ -53,7 +53,7 @@ export const readProjects = async (
 
 export const getArchitecture = async (project_id: string) => {
   try {
-    const response = await projectApi.get(`/projects/architecture/${project_id}`);
+    const response = await api.get(`/projects/architecture/${project_id}`);
     const result: ArchitectureOutput = response.data.data;
     return result;
   } catch (error) {
@@ -64,7 +64,7 @@ export const getArchitecture = async (project_id: string) => {
 
 export const updateArchitectureMermaidCode = async (project_id: string, mermaid_code: string) => {
   try {
-    const response = await projectApi.patch(`/projects/${project_id}/architecture`, {
+    const response = await api.patch(`/projects/${project_id}/architecture`, {
       mermaid_code,
     });
     return response.data;

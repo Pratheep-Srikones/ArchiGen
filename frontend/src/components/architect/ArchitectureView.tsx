@@ -13,19 +13,14 @@ import {
   type RepoNode,
   type TechItem,
 } from "@/lib/mock-data";
-import { Copy, Folder, File as FileIcon, Loader2, Pencil } from "lucide-react";
+import { Copy, Folder, File as FileIcon, Loader2, Pencil, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InteractiveDiagramCard } from "./InteractiveDiagramCard";
 import { AskAIButton } from "./AskAIButton";
 import { ChatDrawer } from "@/components/chat/ChatDrawer";
 import { GenerateDiagramModal } from "./GenerateDiagramModal";
 import { toast } from "sonner";
-
-export interface ExtraDiagram {
-  id: string;
-  title: string;
-  source: string;
-}
+import { SaveDiagramRequest, type Diagram } from "@/services/project";
 
 export interface ArchitectureViewProps {
   data: ArchitectureOutput;
@@ -34,6 +29,12 @@ export interface ArchitectureViewProps {
   onSave?: () => void;
   projectId?: string;
   onUpdateMermaidCode?: (projectId: string, mermaidCode: string) => Promise<void>;
+  diagrams?: Diagram[];
+  diagramsLoading?: boolean;
+  diagramsError?: Error | null;
+  onDiagramsRetry?: () => void;
+  onSaveDiagram?: (payload: SaveDiagramRequest) => Promise<void>;
+  isSavingDiagram?: boolean;
 }
 
 const SECTIONS = [
@@ -51,10 +52,15 @@ export function ArchitectureView({
   onSave,
   projectId,
   onUpdateMermaidCode,
+  diagrams = [],
+  diagramsLoading = false,
+  diagramsError = null,
+  onDiagramsRetry,
+  onSaveDiagram,
+  isSavingDiagram = false,
 }: ArchitectureViewProps) {
   const [activeSection, setActiveSection] = useState<string>("macro");
   const [modalOpen, setModalOpen] = useState(false);
-  const [extraDiagrams, setExtraDiagrams] = useState<ExtraDiagram[]>([]);
   const [dirtyMermaidCode, setDirtyMermaidCode] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
@@ -268,16 +274,58 @@ export function ArchitectureView({
               isDirty={dirtyMermaidCode !== null}
             />
 
-            {extraDiagrams.map((d) => (
-              <InteractiveDiagramCard
-                key={d.id}
-                id={d.id}
-                title={d.title}
-                initialSource={d.source}
-                description={d.title}
-                className="mt-5"
-              />
-            ))}
+            {diagramsLoading && (
+              <div className="mt-5 rounded-xl border border-border-passive bg-cream p-8 min-h-[200px] flex items-center justify-center">
+                <div className="flex items-center gap-2 text-muted text-caption">
+                  <Loader2 size={16} strokeWidth={1.5} className="animate-spin" />
+                  Loading saved diagrams…
+                </div>
+              </div>
+            )}
+
+            {diagramsError && (
+              <div className="mt-5 rounded-xl border border-red-300 bg-red-50 p-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle size={18} className="text-red-600 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-[15px] font-medium text-red-800">
+                      Failed to load saved diagrams
+                    </p>
+                    <p className="text-[14px] text-red-700 mt-1">
+                      {diagramsError instanceof Error
+                        ? diagramsError.message
+                        : "Something went wrong"}
+                    </p>
+                    <div className="mt-4">
+                      <ArchButton variant="ghost" size="sm" onClick={onDiagramsRetry}>
+                        Retry
+                      </ArchButton>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!diagramsLoading && !diagramsError && diagrams.length === 0 && (
+              <div className="mt-5 text-center">
+                <p className="text-caption text-muted">
+                  No saved diagrams yet. Generate one below.
+                </p>
+              </div>
+            )}
+
+            {!diagramsLoading &&
+              !diagramsError &&
+              diagrams.map((d) => (
+                <InteractiveDiagramCard
+                  key={d.id}
+                  id={d.id}
+                  title={`${d.type} diagram`}
+                  initialSource={d.mermaid_code}
+                  description={`Saved ${d.type} diagram`}
+                  className="mt-5"
+                />
+              ))}
           </section>
 
           <section
@@ -317,11 +365,14 @@ export function ArchitectureView({
         </div>
       </main>
 
-      {modalOpen && (
+      {modalOpen && projectId && onSaveDiagram && (
         <GenerateDiagramModal
           context={data}
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
+          projectId={projectId}
+          onSaveDiagram={onSaveDiagram}
+          isSavingDiagram={isSavingDiagram}
         />
       )}
       {projectId && <ChatDrawer projectId={projectId} />}

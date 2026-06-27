@@ -18,6 +18,7 @@ from fastapi import Request
 from app.exceptions.architecture_exceptions import InvalidInputError, AIServiceError, ArchitectureError
 from app.routers.ai_routes import router as ai_router
 from app.routers.chat_routes import router as chat_router
+from app.routers.diagram_routes import router as diagram_router
 
 allowed_origins = ["http://localhost:5173"]
 
@@ -74,6 +75,7 @@ async def architecture_base_handler(request: Request, exc: ArchitectureError):
 
 app.include_router(ai_router)
 app.include_router(chat_router)
+app.include_router(diagram_router)
 
 @app.get("/health")
 async def health_check():

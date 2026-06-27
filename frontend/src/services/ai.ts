@@ -78,7 +78,7 @@ export const sendMessage = async (payload: ChatRequest) => {
 
 export const generateDiagram = async (payload: CreateDiagramRequest) => {
   try {
-    const response = await api.post("/diagram", payload);
+    const response = await api.post("/ai/diagram", payload);
     const diagram = response.data.data?.diagram;
     return diagram;
   } catch (error) {

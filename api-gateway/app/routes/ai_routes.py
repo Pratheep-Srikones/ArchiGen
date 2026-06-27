@@ -10,7 +10,7 @@ router = APIRouter()
 
 AI_SERVICE=settings.AI_SERVICE_URL
 
-@router.api_route("/ai/{path:path}",methods=["GET","POST","PUT","DELETE"])
+@router.api_route("/ai/{path:path}",methods=["GET","POST","PUT","DELETE","PATCH"])
 async def proxy_ai(path: str, request: Request):
     user = request.state.user
     target_url = f"{AI_SERVICE}/{path}"

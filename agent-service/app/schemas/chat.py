@@ -35,3 +35,15 @@ class ChatRequest(BaseModel):
 
 class CreateChatRequest(BaseModel):
     architecture: ArchitectureData
+
+class GenerateDiagramRequest(BaseModel):
+    context: ArchitectureData
+    diagram_type: Literal["sequence", "class", "component", "deployment", "usecase", "activity", "state","flowchart", "er"]
+    prompt: str 
+
+class ModifyDiagramRequest(BaseModel):
+    context: ArchitectureData
+    diagram_type: Literal["sequence", "class", "component", "deployment", "usecase", "activity", "state","flowchart", "er"]
+    prompt: str 
+    diagram_code: str
+    change: str

@@ -1,3 +1,4 @@
+from app.schemas.chat import ArchitectureData
 import os
 import json
 # pyrefly: ignore [missing-import]
@@ -11,7 +12,7 @@ from app.config.redis import get_redis_client
 client = genai.Client(api_key=config.gemini_api_key)
 MODEL = os.getenv("MODEL", "gemini-2.5-flash")
 
-async def get_chat_reponse(user_id: str, session_id: str, user_question: str) -> str:
+async def get_chat_response(user_id: str, session_id: str, user_question: str) -> str:
     """
     Fetches context from Redis, generates an AI response, updates history, 
     and returns the final message string.
@@ -104,3 +105,49 @@ async def get_chat_reponse(user_id: str, session_id: str, user_question: str) ->
         print(f"Error during chat generation: {str(e)}")
         # In a real app, you might want to raise an HTTPException here
         return "I encountered an internal error while trying to process your request."
+
+async def generate_diagram(context: ArchitectureData, diagram_type: str, prompt: str):
+    arch_string = json.dumps(context.model_dump(), indent=2)
+
+    system_instruction = f"""
+    You are an expert software architect and Mermaid.js diagram designer.
+    Your task is to generate a valid Mermaid.js `{diagram_type}` diagram based on the user's prompt and the provided architecture blueprint.
+    
+    CRITICAL RULES:
+    1. Only use components and technologies explicitly mentioned in the architecture blueprint.
+    2. Return ONLY valid Mermaid.js code. 
+    3. Do NOT include markdown code fences (like ```mermaid). Return just the raw code.
+    4. Do NOT include any explanations or conversational text.
+    
+    <architecture_blueprint>
+    {arch_string}
+    </architecture_blueprint>
+    """
+
+    user_prompt = f"""
+    Generate a {diagram_type} diagram for the following prompt : {prompt}
+    """
+
+    try:
+        response = await client.aio.models.generate_content(
+            model=MODEL,
+            contents=user_prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0.1,
+            )
+        )
+        
+        # Clean up any accidental markdown formatting the LLM might hallucinate
+        clean_code = response.text.replace("```mermaid", "").replace("```", "").strip()
+        return clean_code
+        
+    except Exception as e:
+        print(f"Diagram generation error: {str(e)}")
+        raise ValueError("Failed to generate diagram.")
+    
+    
+        
+
+
+    

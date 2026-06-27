@@ -1,11 +1,12 @@
+from app.schemas.chat import GenerateDiagramRequest
 import json
 from app.config.redis import get_redis_client
 from app.utils.uuid import generate_uuid
 from app.schemas.chat import ArchitectureData
-from app.utils.ai import agent_utils
+from app.utils.ai import chat_utils
 
 async def get_chat_response(user_question: str, session_id: str, user_id:str):
-    response =  await agent_utils.get_chat_reponse(user_id,session_id,user_question)
+    response =  await chat_utils.get_chat_response(user_id,session_id,user_question)
     return {
         "message":"Chat response received successfully",
         "data":{
@@ -26,3 +27,15 @@ async def create_new_chat(architecture: ArchitectureData, user_id: str):
         },
         "error":None
     }
+
+async def generate_diagram(request: GenerateDiagramRequest):
+    response = await chat_utils.generate_diagram(request.context,request.diagram_type,request.prompt)
+    return {
+        "message":"Diagram generated successfully",
+        "data":{
+            "diagram":response
+        },
+        "error":None
+    }
+
+    

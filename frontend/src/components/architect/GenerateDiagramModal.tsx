@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { generateDiagram } from "@/services/ai";
+import { SaveDiagramRequest } from "@/services/project";
 import { InteractiveDiagramCard } from "./InteractiveDiagramCard";
 import { ArchButton } from "./Button";
 import { ArchitectureOutput } from "@/lib/mock-data";
@@ -22,9 +23,19 @@ export interface GenerateDiagramModalProps {
   context: ArchitectureOutput;
   isOpen: boolean;
   onClose: () => void;
+  projectId: string;
+  onSaveDiagram: (payload: SaveDiagramRequest) => Promise<void>;
+  isSavingDiagram?: boolean;
 }
 
-export function GenerateDiagramModal({ context, isOpen, onClose }: GenerateDiagramModalProps) {
+export function GenerateDiagramModal({
+  context,
+  isOpen,
+  onClose,
+  projectId,
+  onSaveDiagram,
+  isSavingDiagram = false,
+}: GenerateDiagramModalProps) {
   const [selectedType, setSelectedType] = useState<DiagramLabel>("Use Case");
   const [prompt, setPrompt] = useState("");
   const [status, setStatus] = useState<"idle" | "generating" | "success" | "error">("idle");
@@ -63,6 +74,14 @@ export function GenerateDiagramModal({ context, isOpen, onClose }: GenerateDiagr
       setStatus("error");
       toast.error(message);
     }
+  };
+
+  const handleSave = async () => {
+    if (status !== "success") return;
+    await onSaveDiagram({
+      type: selectedValue,
+      mermaid_code: generatedSource,
+    });
   };
 
   return (
@@ -177,12 +196,35 @@ export function GenerateDiagramModal({ context, isOpen, onClose }: GenerateDiagr
           )}
 
           {status === "success" && (
-            <InteractiveDiagramCard
-              id="generated-diagram"
-              title={`${selectedType} — ${prompt || "Generated diagram"}`}
-              initialSource={generatedSource}
-              description={`AI-generated ${selectedType.toLowerCase()}`}
-            />
+            <>
+              <div className="flex justify-end">
+                <ArchButton
+                  variant="primary"
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={isSavingDiagram}
+                >
+                  {isSavingDiagram ? (
+                    <>
+                      <Loader2
+                        size={14}
+                        strokeWidth={1.5}
+                        className="animate-spin"
+                      />
+                      Saving…
+                    </>
+                  ) : (
+                    "Save to Project"
+                  )}
+                </ArchButton>
+              </div>
+              <InteractiveDiagramCard
+                id="generated-diagram"
+                title={`${selectedType} — ${prompt || "Generated diagram"}`}
+                initialSource={generatedSource}
+                description={`AI-generated ${selectedType.toLowerCase()}`}
+              />
+            </>
           )}
         </div>
       </div>

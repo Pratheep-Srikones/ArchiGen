@@ -51,33 +51,3 @@ export const sendMessage = async (payload: ChatRequest) => {
     throw error;
   }
 }
-
-export type DiagramType = "usecase" | "sequence" | "er" | "class" | "flowchart" | "state";
-
-export interface GenerateDiagramRequest {
-  context: {
-    title: string;
-    requirements: string;
-    architecture: string;
-    mermaid_code: string;
-    micro: MicroSection[];
-    tech_stack: TechItem[];
-    repo: RepoNode[];
-  };
-  diagram_type: DiagramType;
-  prompt?: string;
-}
-
-export const generateDiagram = async (payload: GenerateDiagramRequest): Promise<string> => {
-  try {
-    const response = await api.post("/ai/generate-diagram", payload);
-    const diagram = response.data.data?.mermaid_code;
-    if (!diagram) {
-      throw new Error("No diagram returned from service");
-    }
-    return diagram;
-  } catch (error) {
-    console.error("Error generating diagram:", error);
-    throw error;
-  }
-}

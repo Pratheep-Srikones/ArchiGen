@@ -44,15 +44,6 @@ const SECTIONS = [
   { id: "repo", label: "Repository" },
 ] as const;
 
-const DIAGRAM_TYPES = [
-  "Use Case",
-  "Sequence",
-  "ER Diagram",
-  "Class Diagram",
-  "Flowchart",
-  "State Machine",
-] as const;
-
 export function ArchitectureView({
   data,
   isTemporary = false,

@@ -6,20 +6,19 @@
  * temporary `/result` post-generation route.
  */
 import { useEffect, useRef, useState } from "react";
-import { DiagramRenderer } from "./DiagramRenderer";
 import { ArchButton } from "./Button";
 import {
-  MOCK_GENERATED_DIAGRAM,
   type ArchitectureOutput,
   type MicroSection,
   type RepoNode,
   type TechItem,
 } from "@/lib/mock-data";
-import { Copy, Folder, File as FileIcon, X, Loader2, Download, Pencil } from "lucide-react";
+import { Copy, Folder, File as FileIcon, Loader2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InteractiveDiagramCard } from "./InteractiveDiagramCard";
 import { AskAIButton } from "./AskAIButton";
 import { ChatDrawer } from "@/components/chat/ChatDrawer";
+import { GenerateDiagramModal } from "./GenerateDiagramModal";
 import { toast } from "sonner";
 
 export interface ExtraDiagram {
@@ -328,12 +327,10 @@ export function ArchitectureView({
       </main>
 
       {modalOpen && (
-        <DiagramModal
+        <GenerateDiagramModal
+          context={data}
+          isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
-          onAdd={(d) => {
-            setExtraDiagrams((prev) => [...prev, d]);
-            setModalOpen(false);
-          }}
         />
       )}
       {projectId && <ChatDrawer projectId={projectId} />}
@@ -372,151 +369,6 @@ function FileTreeNode({ node, depth }: { node: RepoNode; depth: number }) {
       {node.children?.map((c) => (
         <FileTreeNode key={c.name} node={c} depth={depth + 1} />
       ))}
-    </div>
-  );
-}
-
-function DiagramModal({
-  onClose,
-  onAdd,
-}: {
-  onClose: () => void;
-  onAdd: (d: ExtraDiagram) => void;
-}) {
-  const [selectedType, setSelectedType] = useState<string>("Use Case");
-  const [prompt, setPrompt] = useState(
-    "Use case diagram for viewer authentication and stream joining flow",
-  );
-  const [state, setState] = useState<"idle" | "generating" | "generated">("idle");
-  const [iteration, setIteration] = useState(0);
-
-  useEffect(() => {
-    setState("generating");
-    const t = setTimeout(() => {
-      setState("generated");
-      setIteration(1);
-    }, 1400);
-    return () => clearTimeout(t);
-  }, []);
-
-  const regenerate = () => {
-    setState("generating");
-    setTimeout(() => {
-      setState("generated");
-      setIteration((i) => i + 1);
-    }, 1500);
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="absolute inset-0 bg-charcoal/40 backdrop-blur-xs" onClick={onClose} />
-      <div className="relative bg-cream border border-border-passive rounded-2xl shadow-modal w-full max-w-180 max-h-[90vh] overflow-y-auto p-7 animate-modal-in">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-[24px] font-semibold tracking-[-0.5px] text-charcoal">
-              Generate a Diagram
-            </h2>
-            <p className="text-caption text-muted mt-1">
-              Describe the diagram you need for this architecture
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="rounded-md border border-charcoal-40 p-1.5 text-charcoal hover:bg-charcoal-04"
-          >
-            <X size={14} strokeWidth={1.5} />
-          </button>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          {DIAGRAM_TYPES.map((t) => {
-            const active = t === selectedType;
-            return (
-              <button
-                key={t}
-                onClick={() => setSelectedType(t)}
-                className={cn(
-                  "rounded-full border px-3.5 py-1.5 text-[14px] transition-colors",
-                  active
-                    ? "bg-charcoal text-off-white border-charcoal"
-                    : "bg-cream text-charcoal border-border-passive hover:border-charcoal-40",
-                )}
-              >
-                {t}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="mt-4 rounded-lg border border-charcoal-40 bg-cream px-4 py-3">
-          <input
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            className="w-full bg-transparent outline-none text-[16px] text-charcoal placeholder:text-muted"
-            placeholder="e.g. Use case diagram for the viewer authentication and stream access flow…"
-          />
-        </div>
-
-        <div className="mt-5">
-          <p className="text-caption text-muted mb-2">Generated Diagram</p>
-          <div className="rounded-xl border border-blueprint-border overflow-hidden bg-white">
-            <div className="p-5 min-h-60 flex items-center justify-center">
-              {state === "generating" ? (
-                <div className="flex items-center gap-2 text-muted text-caption">
-                  <Loader2 size={16} strokeWidth={1.5} className="animate-spin" />
-                  Generating diagram…
-                </div>
-              ) : state === "generated" ? (
-                <DiagramRenderer id={`gen-${iteration}`} source={MOCK_GENERATED_DIAGRAM} />
-              ) : null}
-            </div>
-          </div>
-        </div>
-
-        {state === "generated" && (
-          <div className="mt-4 flex items-center gap-2">
-            <span className="text-caption text-muted">Modify:</span>
-            <input
-              placeholder="e.g. Add an admin actor with moderation use cases…"
-              className="flex-1 rounded-md border border-border-passive bg-charcoal-03 px-3 py-1.5 text-[14px] text-charcoal outline-none focus:shadow-focus"
-            />
-            <ArchButton variant="ghost" size="sm" onClick={regenerate}>
-              Apply
-            </ArchButton>
-          </div>
-        )}
-
-        <div className="mt-6 pt-5 border-t border-border-passive flex items-center justify-between gap-3">
-          <ArchButton
-            variant="primary"
-            size="sm"
-            disabled={state !== "generated"}
-            onClick={() =>
-              onAdd({
-                id: `extra-${Date.now()}`,
-                title: `${selectedType} — ${prompt}`,
-                source: MOCK_GENERATED_DIAGRAM,
-              })
-            }
-          >
-            Add to Project
-          </ArchButton>
-          <div className="flex items-center gap-2">
-            <ArchButton variant="cream" size="sm">
-              <Download size={14} strokeWidth={1.5} /> Download SVG
-            </ArchButton>
-            <ArchButton variant="ghost" size="sm">
-              Suggest Modifications
-            </ArchButton>
-          </div>
-        </div>
-        <p className="mt-3 text-[12px] text-muted text-right">Iteration {iteration} of 3</p>
-      </div>
     </div>
   );
 }

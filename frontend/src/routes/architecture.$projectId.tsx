@@ -64,9 +64,7 @@ function useSaveDiagram(projectId: string) {
       });
     },
     onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to save diagram",
-      );
+      toast.error(error instanceof Error ? error.message : "Failed to save diagram");
     },
   });
 }

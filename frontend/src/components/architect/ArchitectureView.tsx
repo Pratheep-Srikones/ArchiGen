@@ -20,7 +20,7 @@ import { AskAIButton } from "./AskAIButton";
 import { ChatDrawer } from "@/components/chat/ChatDrawer";
 import { GenerateDiagramModal } from "./GenerateDiagramModal";
 import { toast } from "sonner";
-import { SaveDiagramRequest, type Diagram } from "@/services/project";
+import { type SaveDiagramRequest, type Diagram } from "@/services/project";
 
 export interface ArchitectureViewProps {
   data: ArchitectureOutput;
@@ -320,9 +320,9 @@ export function ArchitectureView({
                 <InteractiveDiagramCard
                   key={d.id}
                   id={d.id}
-                  title={`${d.type} diagram`}
+                  title={`${d.diagram_type} diagram`}
                   initialSource={d.mermaid_code}
-                  description={`Saved ${d.type} diagram`}
+                  description={`Saved ${d.diagram_type} diagram`}
                   className="mt-5"
                 />
               ))}
@@ -365,7 +365,7 @@ export function ArchitectureView({
         </div>
       </main>
 
-      {modalOpen && projectId && onSaveDiagram && (
+      {modalOpen && (
         <GenerateDiagramModal
           context={data}
           isOpen={modalOpen}

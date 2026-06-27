@@ -7,6 +7,22 @@ import type {
   TechItem,
 } from "@/lib/mock-data";
 
+export type Diagram = {
+  id: string;
+  project_id: string;
+  diagram_type: string;
+  mermaid_code: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SaveDiagramRequest = {
+  diagram_type: string;
+  mermaid_code: string;
+  description?: string;
+};
+
 export type CreateProjectRequest = {
   project_id: string;
   user_id: string;
@@ -70,6 +86,31 @@ export const updateArchitectureMermaidCode = async (project_id: string, mermaid_
     return response.data;
   } catch (error) {
     console.error("Error updating architecture:", error);
+    throw error;
+  }
+};
+
+export const getDiagrams = async (project_id: string): Promise<Diagram[]> => {
+  try {
+    const response = await api.get(`/projects/${project_id}/diagrams`);
+    const result: Diagram[] = response.data.data;
+    return result;
+  } catch (error) {
+    console.error("Error fetching diagrams:", error);
+    throw error;
+  }
+};
+
+export const saveDiagram = async (
+  project_id: string,
+  payload: SaveDiagramRequest,
+): Promise<Diagram> => {
+  try {
+    const response = await api.post(`/projects/${project_id}/diagrams`, payload);
+    const result: Diagram = response.data.data;
+    return result;
+  } catch (error) {
+    console.error("Error saving diagram:", error);
     throw error;
   }
 };

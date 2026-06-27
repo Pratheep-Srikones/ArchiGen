@@ -18,6 +18,21 @@ type ChatRequest = {
   user_question: string;
 };
 
+type DiagramType = "sequence" | "class" | "component" | "deployment" | "usecase" | "activity" | "state" | "flowchart" | "er";
+type CreateDiagramRequest = {
+  context: {
+    title: string;
+    requirements: string;
+    architecture: string;
+    mermaid_code: string;
+    micro: MicroSection[];
+    tech_stack: TechItem[];
+    repo: RepoNode[];
+  };
+  diagram_type: DiagramType;
+  prompt: string;
+};
+
 export const getArchitectureResponse = async (prompt: string) => {
   try {
     const response = await api.post("/ai/generate-architecture", {
@@ -51,3 +66,15 @@ export const sendMessage = async (payload: ChatRequest) => {
     throw error;
   }
 }
+
+export const generateDiagram = async (payload: CreateDiagramRequest) => {
+  try {
+    const response = await api.post("/diagram", payload);
+    const diagram = response.data.data?.diagram;
+    return diagram;
+  } catch (error) {
+    console.error("Error generating diagram:", error);
+    throw error;
+  }
+}
+

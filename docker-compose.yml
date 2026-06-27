@@ -35,6 +35,20 @@ services:
       - DATABASE_URL=postgresql+asyncpg://${PROJECT_DB_USER}:${PROJECT_DB_PASSWORD}@project_db:5432/${PROJECT_DB_NAME}
     depends_on:
       - project_db
+    
+  api_gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api_gateway
+    restart: unless-stopped
+    ports:
+      - "${API_GATEWAY_PORT}:8002"
+    depends_on:
+      - project_service
+      - agent_service
+    env_file:
+      - ./api-gateway/.env
 
   # frontend:
   #   build:

@@ -4,11 +4,18 @@
  * Fetches the project architecture by ID from the backend.
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavigationBar } from "@/components/architect/NavigationBar";
 import { ArchitectureView } from "@/components/architect/ArchitectureView";
 import type { ArchitectureOutput } from "@/lib/mock-data";
-import { getArchitecture, updateArchitectureMermaidCode } from "@/services/project";
+import {
+  getArchitecture,
+  getDiagrams,
+  saveDiagram,
+  type Diagram,
+  type SaveDiagramRequest,
+  updateArchitectureMermaidCode,
+} from "@/services/project";
 import { Loading } from "@/components/Loading";
 import { toast } from "sonner";
 
@@ -35,10 +42,41 @@ function useProject(projectId: string) {
   });
 }
 
+function useDiagrams(projectId: string) {
+  return useQuery<Diagram[], Error>({
+    queryKey: ["project", "diagrams", projectId],
+    queryFn: async () => {
+      return await getDiagrams(projectId);
+    },
+  });
+}
+
+function useSaveDiagram(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation<unknown, Error, SaveDiagramRequest>({
+    mutationFn: async (payload) => {
+      return await saveDiagram(projectId, payload);
+    },
+    onSuccess: () => {
+      toast.success("Diagram saved successfully");
+      queryClient.invalidateQueries({
+        queryKey: ["project", "diagrams", projectId],
+      });
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save diagram",
+      );
+    },
+  });
+}
+
 function ArchitecturePage() {
   const { projectId } = Route.useParams();
   const queryClient = useQueryClient();
   const query = useProject(projectId);
+  const diagramsQuery = useDiagrams(projectId);
+  const saveDiagramMutation = useSaveDiagram(projectId);
 
   const handleUpdateMermaidCode = async (_projectId: string, mermaidCode: string) => {
     await updateArchitectureMermaidCode(_projectId, mermaidCode);
@@ -74,6 +112,14 @@ function ArchitecturePage() {
         isTemporary={false}
         projectId={projectId}
         onUpdateMermaidCode={handleUpdateMermaidCode}
+        diagrams={diagramsQuery.data ?? []}
+        diagramsLoading={diagramsQuery.isLoading}
+        diagramsError={diagramsQuery.error}
+        onDiagramsRetry={() => diagramsQuery.refetch()}
+        onSaveDiagram={async (payload) => {
+          await saveDiagramMutation.mutateAsync(payload);
+        }}
+        isSavingDiagram={saveDiagramMutation.isPending}
       />
     </div>
   );

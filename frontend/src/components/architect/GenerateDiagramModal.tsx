@@ -24,23 +24,16 @@ export interface GenerateDiagramModalProps {
   onClose: () => void;
 }
 
-export function GenerateDiagramModal({
-  context,
-  isOpen,
-  onClose,
-}: GenerateDiagramModalProps) {
+export function GenerateDiagramModal({ context, isOpen, onClose }: GenerateDiagramModalProps) {
   const [selectedType, setSelectedType] = useState<DiagramLabel>("Use Case");
   const [prompt, setPrompt] = useState("");
-  const [status, setStatus] = useState<
-    "idle" | "generating" | "success" | "error"
-  >("idle");
+  const [status, setStatus] = useState<"idle" | "generating" | "success" | "error">("idle");
   const [generatedSource, setGeneratedSource] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   if (!isOpen) return null;
 
-  const selectedValue =
-    DIAGRAM_TYPES.find((t) => t.label === selectedType)?.value ?? "usecase";
+  const selectedValue = DIAGRAM_TYPES.find((t) => t.label === selectedType)?.value ?? "usecase";
 
   const handleGenerate = async () => {
     setStatus("generating");
@@ -65,8 +58,7 @@ export function GenerateDiagramModal({
       setGeneratedSource(diagram);
       setStatus("success");
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to generate diagram";
+      const message = err instanceof Error ? err.message : "Failed to generate diagram";
       setErrorMessage(message);
       setStatus("error");
       toast.error(message);
@@ -79,10 +71,7 @@ export function GenerateDiagramModal({
       role="dialog"
       aria-modal="true"
     >
-      <div
-        className="absolute inset-0 bg-charcoal/40 backdrop-blur-xs"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-charcoal/40 backdrop-blur-xs" onClick={onClose} />
       <div className="relative bg-cream border border-border-passive rounded-2xl shadow-modal w-full max-w-225 max-h-[90vh] overflow-y-auto p-7 animate-modal-in">
         <div className="flex items-start justify-between">
           <div>
@@ -115,7 +104,7 @@ export function GenerateDiagramModal({
                   active
                     ? "bg-charcoal text-off-white border-charcoal"
                     : "bg-cream text-charcoal border-border-passive hover:border-charcoal-40",
-                  status === "generating" && "opacity-60 cursor-not-allowed"
+                  status === "generating" && "opacity-60 cursor-not-allowed",
                 )}
               >
                 {t.label}
@@ -143,11 +132,7 @@ export function GenerateDiagramModal({
           >
             {status === "generating" ? (
               <>
-                <Loader2
-                  size={14}
-                  strokeWidth={1.5}
-                  className="animate-spin"
-                />
+                <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
                 Generating…
               </>
             ) : (
@@ -160,8 +145,7 @@ export function GenerateDiagramModal({
           {status === "idle" && (
             <div className="rounded-xl border border-border-passive bg-cream p-8 min-h-[300px] flex items-center justify-center text-center">
               <p className="text-caption text-muted">
-                Select a diagram type, describe what you need, and click
-                Generate.
+                Select a diagram type, describe what you need, and click Generate.
               </p>
             </div>
           )}
@@ -169,11 +153,7 @@ export function GenerateDiagramModal({
           {status === "generating" && (
             <div className="rounded-xl border border-blueprint-border bg-white p-8 min-h-[300px] flex items-center justify-center">
               <div className="flex items-center gap-2 text-muted text-caption">
-                <Loader2
-                  size={16}
-                  strokeWidth={1.5}
-                  className="animate-spin"
-                />
+                <Loader2 size={16} strokeWidth={1.5} className="animate-spin" />
                 Generating diagram…
               </div>
             </div>
@@ -182,23 +162,12 @@ export function GenerateDiagramModal({
           {status === "error" && (
             <div className="rounded-xl border border-red-300 bg-red-50 p-6">
               <div className="flex items-start gap-3">
-                <AlertCircle
-                  size={18}
-                  className="text-red-600 shrink-0 mt-0.5"
-                />
+                <AlertCircle size={18} className="text-red-600 shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-[15px] font-medium text-red-800">
-                    Diagram generation failed
-                  </p>
-                  <p className="text-[14px] text-red-700 mt-1">
-                    {errorMessage}
-                  </p>
+                  <p className="text-[15px] font-medium text-red-800">Diagram generation failed</p>
+                  <p className="text-[14px] text-red-700 mt-1">{errorMessage}</p>
                   <div className="mt-4">
-                    <ArchButton
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleGenerate}
-                    >
+                    <ArchButton variant="ghost" size="sm" onClick={handleGenerate}>
                       Retry
                     </ArchButton>
                   </div>

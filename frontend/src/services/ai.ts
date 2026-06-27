@@ -18,7 +18,16 @@ type ChatRequest = {
   user_question: string;
 };
 
-type DiagramType = "sequence" | "class" | "component" | "deployment" | "usecase" | "activity" | "state" | "flowchart" | "er";
+type DiagramType =
+  | "sequence"
+  | "class"
+  | "component"
+  | "deployment"
+  | "usecase"
+  | "activity"
+  | "state"
+  | "flowchart"
+  | "er";
 type CreateDiagramRequest = {
   context: {
     title: string;
@@ -54,7 +63,7 @@ export const createChat = async (payload: CreateChatRequest) => {
     console.error("Error creating chat:", error);
     throw error;
   }
-}
+};
 
 export const sendMessage = async (payload: ChatRequest) => {
   try {
@@ -65,7 +74,7 @@ export const sendMessage = async (payload: ChatRequest) => {
     console.error("Error sending message:", error);
     throw error;
   }
-}
+};
 
 export const generateDiagram = async (payload: CreateDiagramRequest) => {
   try {
@@ -76,5 +85,4 @@ export const generateDiagram = async (payload: CreateDiagramRequest) => {
     console.error("Error generating diagram:", error);
     throw error;
   }
-}
-
+};

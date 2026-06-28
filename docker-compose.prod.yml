@@ -35,9 +35,10 @@ services:
       - archigen_overlay
     deploy:
       replicas: 2
-      placement:
-        constraints:
-          - node.labels.type == ai-worker
+      # placement:
+      #   constraints:
+      #     - node.labels.type == ai-worker  
+      # enable tagging in multi node deployment
       restart_policy:
         condition: on-failure
 

@@ -1,11 +1,11 @@
 import asyncio
 import json
-from app.exceptions.architecture_exceptions import InvalidInputError, AIServiceError
 from app.utils.ai import agent
-
+# pyrefly: ignore [missing-import]
+from fastapi import HTTPException
 async def generate_architecture(requirement: str) -> any:
     if not requirement:
-        raise InvalidInputError("requirement is required")
+        raise HTTPException(status_code=400, detail="requirement is required")
     try:
         # For simplicity, we're using a fixed user_id and session_id here.
         # In a real application, these would be dynamic based on the user and conversation.
@@ -18,8 +18,8 @@ async def generate_architecture(requirement: str) -> any:
             response_json = json.loads(response_text)
             return response_json
         except json.JSONDecodeError:
-            raise AIServiceError(f"AI response is not valid JSON: {response_text}")
+            raise HTTPException(status_code=502, detail="AI response is not valid JSON")
     except Exception as e:
-        raise AIServiceError(f"Error during architecture generation: {str(e)}")
+        raise HTTPException(status_code=502, detail="Error during architecture generation")
 
     

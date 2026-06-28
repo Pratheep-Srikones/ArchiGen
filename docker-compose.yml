@@ -1,3 +1,8 @@
+networks:
+  archigen_internal:
+    driver: bridge
+    name: archigen_internal
+
 services:
   project_db:
     image: postgres:17-alpine
@@ -11,6 +16,13 @@ services:
       - "${PROJECT_DB_PORT}:5432"
     volumes:
       - project_data:/var/lib/postgresql/data
+    networks:
+      - archigen_internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PROJECT_DB_USER} -d ${PROJECT_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   agent_service:
     build:
@@ -22,6 +34,11 @@ services:
       - "${AGENT_SERVICE_PORT}:8000"
     env_file:
       - ./agent-service/.env
+    environment:
+       REDIS_HOST: redis_cache
+       REDIS_PORT: 6379
+    networks:
+      - archigen_internal
 
   project_service:
     build:
@@ -34,8 +51,11 @@ services:
     environment:
       - DATABASE_URL=postgresql+asyncpg://${PROJECT_DB_USER}:${PROJECT_DB_PASSWORD}@project_db:5432/${PROJECT_DB_NAME}
     depends_on:
-      - project_db
-    
+      project_db:
+        condition: service_healthy
+    networks:
+      - archigen_internal
+
   api_gateway:
     build:
       context: ./api-gateway
@@ -49,17 +69,40 @@ services:
       - agent_service
     env_file:
       - ./api-gateway/.env
+    environment:
+      PROJECT_SERVICE_URL: http://project_service:8001
+      AI_SERVICE_URL: http://agent_service:8000
+    networks:
+      - archigen_internal
 
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile.dev
-  #   container_name: frontend
-  #   restart: unless-stopped
-  #   ports:
-  #     - "${FRONTEND_PORT}:5173"
-  #   env_file:
-  #     - .env
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT}:5173"
+    env_file:
+      - ./frontend/.env.local
+    environment:
+      VITE_API_URL: http://localhost:8002/api
+    depends_on:
+      - api_gateway
+    networks:
+      - archigen_internal
+  
+  redis_cache:
+    image: redis:8-alpine
+    container_name: redis_cache
+    restart: unless-stopped
+    ports:
+      - "${REDIS_CACHE_PORT}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - archigen_internal
 
 volumes:
   project_data:
+  redis_data:

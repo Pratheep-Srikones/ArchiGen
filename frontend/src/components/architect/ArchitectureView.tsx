@@ -123,9 +123,9 @@ export function ArchitectureView({
             )}
             {!isTemporary && projectId && (
               <>
-                <ArchButton variant="ghost" size="sm">
+                {/* <ArchButton variant="ghost" size="sm">
                   Share
-                </ArchButton>
+                </ArchButton> */}
                 <AskAIButton projectId={projectId} architecture={data} />
                 {dirtyMermaidCode !== null && (
                   <ArchButton

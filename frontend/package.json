@@ -11,6 +11,12 @@
     "lint": "eslint .",
     "format": "prettier --write ."
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "core-js-pure",
+      "esbuild"
+    ]
+  },
   "dependencies": {
     "@asgardeo/auth-react": "^5.6.2",
     "@hookform/resolvers": "^5.2.2",

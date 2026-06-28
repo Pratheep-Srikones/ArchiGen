@@ -15,12 +15,15 @@ from fastapi.responses import JSONResponse
 # pyrefly: ignore [missing-import]
 from fastapi import Request
 
-from app.exceptions.architecture_exceptions import InvalidInputError, AIServiceError, ArchitectureError
 from app.routers.ai_routes import router as ai_router
 from app.routers.chat_routes import router as chat_router
 from app.routers.diagram_routes import router as diagram_router
 
-allowed_origins = ["http://localhost:5173"]
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8002", 
+]
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -38,40 +41,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.exception_handler(InvalidInputError)
-async def invalid_input_handler(request: Request, exc: InvalidInputError):
-    return JSONResponse(
-        status_code=400,
-        content={
-            "data": None,
-            "message": "Invalid request input",
-            "error": str(exc),
-        },
-    )
-
-@app.exception_handler(AIServiceError)
-async def ai_service_handler(request: Request, exc: AIServiceError):
-    return JSONResponse(
-        status_code=502,
-        content={
-            "data": None,
-            "message": "AI service failure",
-            "error": str(exc),
-        },
-    )
-
-@app.exception_handler(ArchitectureError)
-async def architecture_base_handler(request: Request, exc: ArchitectureError):
-    return JSONResponse(
-        status_code=500,
-        content={
-            "data": None,
-            "message": "Architecture generation failed",
-            "error": str(exc),
-        },
-    )
 
 app.include_router(ai_router)
 app.include_router(chat_router)

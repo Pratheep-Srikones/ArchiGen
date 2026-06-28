@@ -22,7 +22,15 @@ async def proxy_ai(path: str, request: Request):
 
     body = await request.body()
 
-    async with httpx.AsyncClient() as client:
+    timeout = httpx.Timeout(
+        connect=10.0,
+        read=300.0,
+        write=300.0,
+        pool=10.0,
+    )
+
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
         response = await client.request(
             method=request.method,
             url=target_url,

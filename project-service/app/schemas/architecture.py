@@ -32,3 +32,8 @@ class ProjectSaveRequest(BaseModel):
 
 class UpdateMermaidCodeRequest(BaseModel):
     mermaid_code: str
+
+class CreateDiagramRequest(BaseModel):
+    type: Literal["sequence", "class", "component", "deployment", "usecase", "activity", "state","flowchart", "er"]
+    mermaid_code: str
+

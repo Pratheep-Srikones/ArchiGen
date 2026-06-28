@@ -18,7 +18,7 @@ type ChatRequest = {
   user_question: string;
 };
 
-type DiagramType =
+export type DiagramType =
   | "sequence"
   | "class"
   | "component"

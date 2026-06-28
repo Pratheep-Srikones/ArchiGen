@@ -79,7 +79,7 @@ export function GenerateDiagramModal({
   const handleSave = async () => {
     if (!projectId || !onSaveDiagram || status !== "success") return;
     await onSaveDiagram({
-      diagram_type: selectedValue,
+      type: selectedValue,
       mermaid_code: generatedSource,
     });
   };

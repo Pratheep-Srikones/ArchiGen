@@ -320,9 +320,9 @@ export function ArchitectureView({
                 <InteractiveDiagramCard
                   key={d.id}
                   id={d.id}
-                  title={`${d.diagram_type} diagram`}
+                  title={`${d.type} diagram`}
                   initialSource={d.mermaid_code}
-                  description={`Saved ${d.diagram_type} diagram`}
+                  description={`Saved ${d.type} diagram`}
                   className="mt-5"
                 />
               ))}

@@ -1,11 +1,18 @@
+from app.models.project import Diagram
+# pyrefly: ignore [missing-import]
 from sqlalchemy.exc import SQLAlchemyError
+# pyrefly: ignore [missing-import]
 from sqlalchemy import func
+# pyrefly: ignore [missing-import]
 from sqlalchemy.exc import IntegrityError
+# pyrefly: ignore [missing-import]
 from fastapi import HTTPException
+# pyrefly: ignore [missing-import]
 from fastapi import status
 import uuid
-
+# pyrefly: ignore [missing-import]
 from sqlalchemy.ext.asyncio.session import AsyncSession
+# pyrefly: ignore [missing-import]
 from sqlalchemy import select
 
 from app.models.project import Architecture, Project
@@ -183,6 +190,102 @@ async def update_architecture(project_id: str, mermaid_code: str, user_id: str, 
         )
     except SQLAlchemyError:
         await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database error",
+        )
+
+async def save_diagram(project_id: str, diagram_type: str, mermaid_code: str, user_id: str, db: AsyncSession):
+    try:
+        project_uuid = uuid.UUID(project_id)
+
+        existing_project =  await db.execute(
+            select(Project)
+            .where(Project.id == project_uuid)
+        )
+        existing_project = existing_project.scalars().first()
+
+        if not existing_project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found",
+            )
+    
+        if str(user_id) != str(existing_project.user_id):
+            print("Unauthorized User !!")
+            print("expected=",existing_project.user_id)
+            print("actual=",user_id)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Unauthorized",
+            )
+
+        diagram = Diagram(
+            project_id=project_uuid,
+            type=diagram_type,
+            mermaid_code=mermaid_code,
+        )
+
+        db.add(diagram)
+        await db.commit()
+
+        return {
+            "status": "success",
+            "message": "Diagram saved successfully.",
+        }
+
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid UUID format provided for user_id or project_id.",
+        )
+    except SQLAlchemyError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database error",
+        )
+
+async def get_diagrams(project_id: str, user_id: str, db: AsyncSession):
+    try:
+        project_uuid = uuid.UUID(project_id)
+
+        existing_project = await db.execute(
+            select(Project)
+            .where(Project.id == project_uuid)
+        )
+        existing_project = existing_project.scalars().first()
+
+        if not existing_project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found",
+            )
+    
+        if str(user_id) != str(existing_project.user_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Unauthorized",
+            )
+
+        diagrams = await db.execute(
+            select(Diagram)
+            .where(Diagram.project_id == project_uuid)
+        )
+        diagrams = diagrams.scalars().all()
+
+        return {
+            "status": "success",
+            "message": "Diagrams fetched successfully.",
+            "data": diagrams,
+        }
+
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid UUID format provided for user_id or project_id.",
+        )
+    except SQLAlchemyError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Database error",

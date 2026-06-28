@@ -10,7 +10,7 @@ import type {
 export type Diagram = {
   id: string;
   project_id: string;
-  diagram_type: string;
+  type: string;
   mermaid_code: string;
   description: string | null;
   created_at: string;
@@ -18,7 +18,7 @@ export type Diagram = {
 };
 
 export type SaveDiagramRequest = {
-  diagram_type: string;
+  type: string;
   mermaid_code: string;
   description?: string;
 };
@@ -92,7 +92,7 @@ export const updateArchitectureMermaidCode = async (project_id: string, mermaid_
 
 export const getDiagrams = async (project_id: string): Promise<Diagram[]> => {
   try {
-    const response = await api.get(`/projects/${project_id}/diagrams`);
+    const response = await api.get(`/projects/diagram/${project_id}`);
     const result: Diagram[] = response.data.data;
     return result;
   } catch (error) {
@@ -106,7 +106,7 @@ export const saveDiagram = async (
   payload: SaveDiagramRequest,
 ): Promise<Diagram> => {
   try {
-    const response = await api.post(`/projects/${project_id}/diagrams`, payload);
+    const response = await api.post(`/projects/diagram/${project_id}`, payload);
     const result: Diagram = response.data.data;
     return result;
   } catch (error) {

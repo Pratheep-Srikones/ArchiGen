@@ -1,3 +1,4 @@
+from app.schemas.architecture import CreateDiagramRequest
 from app.utils.auth import get_current_user_id
 from app.schemas.architecture import UpdateMermaidCodeRequest
 # pyrefly: ignore [missing-import]
@@ -16,6 +17,8 @@ from app.controllers.projects import (
     get_projects as get_projects_controller,
     save_project_and_architecture as save_project_and_architecture_controller,
     update_architecture as update_architecture_controller,
+    save_diagram as save_diagram_controller,
+    get_diagrams as get_diagrams_controller
 )
 
 router = APIRouter()
@@ -45,5 +48,16 @@ async def save_project_and_architecture(payload: ProjectSaveRequest, db: AsyncSe
 @router.patch("/{project_id}/architecture")
 async def update_architecture(project_id: str, payload: UpdateMermaidCodeRequest, db: AsyncSession = Depends(get_db_session), user_id= Depends(get_current_user_id)):
     return await update_architecture_controller(project_id, payload.mermaid_code, user_id, db)
-        
-     
+
+@router.get("/diagram/{project_id}")
+async def get_diagram(
+    project_id: str, 
+    db: AsyncSession = Depends(get_db_session),
+    user_id= Depends(get_current_user_id)
+):
+    return await get_diagrams_controller(project_id, user_id, db)
+    
+@router.post("/diagram/{project_id}")
+async def save_diagram(project_id: str, payload: CreateDiagramRequest, db: AsyncSession = Depends(get_db_session), user_id= Depends(get_current_user_id)):
+    return await save_diagram_controller(project_id, payload.type, payload.mermaid_code, user_id, db)
+    

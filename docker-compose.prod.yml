@@ -79,7 +79,7 @@ services:
     deploy:
       placement:
         constraints:
-          - node.role == manager
+          - node.role == manager # need to change to worker if deploying on multiple nodes
       restart_policy:
         condition: on-failure
   

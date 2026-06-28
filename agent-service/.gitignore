@@ -211,3 +211,6 @@ __marimo__/
 .idea/
 *.sublime-project
 *.sublime-workspace
+
+**/__pycache__/
+**/*.pyc

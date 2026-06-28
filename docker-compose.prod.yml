@@ -1,0 +1,89 @@
+version: '3.8'
+
+networks:
+  archigen_overlay:
+    driver: overlay
+    attachable: true
+
+services:
+  project_db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${PROJECT_DB_USER}
+      POSTGRES_PASSWORD: ${PROJECT_DB_PASSWORD}
+      POSTGRES_DB: ${PROJECT_DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - archigen_overlay
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+  
+  agent_service:
+    image: pratheepsri/archigen-agent:0.0.1
+    environment:
+      REDIS_HOST: redis_cache
+      REDIS_PORT: 6379
+      MODEL: ${MODEL}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GEMINI_API_KEY: ${GOOGLE_API_KEY}
+    networks:
+      - archigen_overlay
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.labels.type == ai-worker
+      restart_policy:
+        condition: on-failure
+
+  redis_cache:
+    image: redis:8-alpine
+    volumes:
+      - redis_data:/data
+    networks:
+      - archigen_overlay
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+  
+  project_service:
+    image: pratheepsri/archigen-project:0.0.1
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${PROJECT_DB_USER}:${PROJECT_DB_PASSWORD}@project_db:5432/${PROJECT_DB_NAME}
+    networks:
+      - archigen_overlay
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+  
+  api_gateway:
+    image: pratheepsri/archigen-api-gateway:0.0.1
+    ports:
+      - "8002:8002"
+    environment:
+      PROJECT_SERVICE_URL: http://project_service:8001
+      AI_SERVICE_URL: http://agent_service:8000
+      ASGARDEO_ORG: ${ASGARDEO_ORG}
+      ASGARDEO_CLIENT_ID: ${ASGARDEO_CLIENT_ID} 
+    networks:
+      - archigen_overlay
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+  
+
+volumes:
+  postgres_data:
+  redis_data:

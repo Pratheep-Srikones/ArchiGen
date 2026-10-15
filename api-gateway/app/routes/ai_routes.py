@@ -1,16 +1,14 @@
-from app.config.app import settings
-# pyrefly: ignore [missing-import]
 import httpx
-# pyrefly: ignore [missing-import]
-from fastapi.responses import JSONResponse
-# pyrefly: ignore [missing-import]
+from app.config.app import settings
 from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 
 router = APIRouter()
 
-AI_SERVICE=settings.AI_SERVICE_URL
+AI_SERVICE = settings.AI_SERVICE_URL
 
-@router.api_route("/ai/{path:path}",methods=["GET","POST","PUT","DELETE","PATCH"])
+
+@router.api_route("/ai/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def proxy_ai(path: str, request: Request):
     user = request.state.user
     target_url = f"{AI_SERVICE}/{path}"
@@ -18,7 +16,7 @@ async def proxy_ai(path: str, request: Request):
     headers = dict(request.headers)
 
     headers["X-User-Id"] = user["sub"]
-    headers["X-Scopes"] = user.get("scope","")
+    headers["X-Scopes"] = user.get("scope", "")
 
     body = await request.body()
 
@@ -28,7 +26,6 @@ async def proxy_ai(path: str, request: Request):
         write=300.0,
         pool=10.0,
     )
-
 
     async with httpx.AsyncClient(timeout=timeout) as client:
         response = await client.request(

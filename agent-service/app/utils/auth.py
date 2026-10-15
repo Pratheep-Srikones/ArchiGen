@@ -1,5 +1,5 @@
-# pyrefly: ignore [missing-import]
 from fastapi import Header, HTTPException
+
 
 def get_current_user_id(x_user_id: str = Header(None)):
     if not x_user_id:

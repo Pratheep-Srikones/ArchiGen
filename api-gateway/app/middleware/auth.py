@@ -1,15 +1,12 @@
-
-# pyrefly: ignore [missing-import]
-from fastapi import Request
-# pyrefly: ignore [missing-import]
-from fastapi.responses import JSONResponse
 from app.security.dependencies import verify_token_string
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
 
 async def auth_middleware(req: Request, call_next):
     if req.method == "OPTIONS":
         return await call_next(req)
-        
+
     public_paths = ["/health", "/docs", "/openapi.json"]
 
     if req.url.path in public_paths:

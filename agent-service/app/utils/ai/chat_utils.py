@@ -1,44 +1,44 @@
-from app.schemas.chat import ArchitectureData
-import os
 import json
-# pyrefly: ignore [missing-import]
+import os
+
 from google import genai
-# pyrefly: ignore [missing-import]
 from google.genai import types
+
 from app.config.config import config
-from app.config.redis import get_redis_client 
+from app.config.redis import get_redis_client
+from app.schemas.chat import ArchitectureData
 
 # Initialize the native async client
 client = genai.Client(api_key=config.gemini_api_key)
 MODEL = os.getenv("MODEL", "gemini-2.5-flash")
 
+
 async def get_chat_response(user_id: str, session_id: str, user_question: str) -> str:
     """
-    Fetches context from Redis, generates an AI response, updates history, 
+    Fetches context from Redis, generates an AI response, updates history,
     and returns the final message string.
     """
     arch_key = f"chat:arch:{user_id}:{session_id}"
     history_key = f"chat:history:{user_id}:{session_id}"
 
     redis_client = await get_redis_client()
-    
+
     try:
         # 1. Fetch the Architecture Context (The Hot Cache)
         arch_data = await redis_client.get(arch_key)
-        
+
         if not arch_data:
             return "Session expired or architecture not found. Please start a new chat session."
-            
+
         # 2. Fetch the Chat History
         raw_history = await redis_client.lrange(history_key, 0, -1)
         formatted_history = []
-        
+
         for msg_str in raw_history:
             msg_data = json.loads(msg_str)
             formatted_history.append(
                 types.Content(
-                    role=msg_data["role"],
-                    parts=[types.Part(text=msg_data["text"])]
+                    role=msg_data["role"], parts=[types.Part(text=msg_data["text"])]
                 )
             )
 
@@ -69,14 +69,14 @@ async def get_chat_response(user_id: str, session_id: str, user_question: str) -
             history=formatted_history,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
-                temperature=0.3, # Keep it low for accurate technical explanations
+                temperature=0.3,  # Keep it low for accurate technical explanations
                 safety_settings=[
                     types.SafetySetting(
                         category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
                         threshold=types.HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
                     ),
-                ]
-            )
+                ],
+            ),
         )
 
         # 5. Send the message to Gemini
@@ -86,7 +86,7 @@ async def get_chat_response(user_id: str, session_id: str, user_question: str) -
         # 6. Save the new conversation turns & Enforce Sliding Window
         user_turn = json.dumps({"role": "user", "text": user_question})
         ai_turn = json.dumps({"role": "model", "text": ai_reply})
-        
+
         # We use a Redis Pipeline to execute these commands atomically
         async with redis_client.pipeline(transaction=True) as pipe:
             pipe.rpush(history_key, user_turn)
@@ -96,15 +96,16 @@ async def get_chat_response(user_id: str, session_id: str, user_question: str) -
             # Reset the expiration to 24 hours of inactivity
             pipe.expire(history_key, 86400)
             # Also refresh the architecture TTL so it doesn't expire while they are chatting
-            pipe.expire(arch_key, 86400) 
+            pipe.expire(arch_key, 86400)
             await pipe.execute()
 
         return ai_reply
 
-    except Exception as e:
-        print(f"Error during chat generation: {str(e)}")
+    except Exception as e:  # noqa: BLE001
+        print(f"Error during chat generation: {e!s}")
         # In a real app, you might want to raise an HTTPException here
         return "I encountered an internal error while trying to process your request."
+
 
 async def generate_diagram(context: ArchitectureData, diagram_type: str, prompt: str):
     arch_string = json.dumps(context.model_dump(), indent=2)
@@ -135,19 +136,13 @@ async def generate_diagram(context: ArchitectureData, diagram_type: str, prompt:
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
                 temperature=0.1,
-            )
+            ),
         )
-        
+
         # Clean up any accidental markdown formatting the LLM might hallucinate
         clean_code = response.text.replace("```mermaid", "").replace("```", "").strip()
         return clean_code
-        
-    except Exception as e:
-        print(f"Diagram generation error: {str(e)}")
+
+    except Exception as e:  # noqa: BLE001
+        print(f"Diagram generation error: {e!s}")
         raise ValueError("Failed to generate diagram.")
-    
-    
-        
-
-
-    

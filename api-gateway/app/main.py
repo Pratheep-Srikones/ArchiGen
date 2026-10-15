@@ -1,10 +1,9 @@
-# pyrefly: ignore [missing-import]
 from fastapi import FastAPI
-# pyrefly: ignore [missing-import]
-from fastapi.middleware.cors import CORSMiddleware 
+from fastapi.middleware.cors import CORSMiddleware
+
 from app.middleware.auth import auth_middleware
-from app.routes.project_routes import router as project_router
 from app.routes.ai_routes import router as ai_router
+from app.routes.project_routes import router as project_router
 
 app = FastAPI()
 

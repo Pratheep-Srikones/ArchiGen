@@ -1,25 +1,17 @@
-from app.models.project import Diagram
-# pyrefly: ignore [missing-import]
-from sqlalchemy.exc import SQLAlchemyError
-# pyrefly: ignore [missing-import]
-from sqlalchemy import func
-# pyrefly: ignore [missing-import]
-from sqlalchemy.exc import IntegrityError
-# pyrefly: ignore [missing-import]
-from fastapi import HTTPException
-# pyrefly: ignore [missing-import]
-from fastapi import status
 import uuid
-# pyrefly: ignore [missing-import]
-from sqlalchemy.ext.asyncio.session import AsyncSession
-# pyrefly: ignore [missing-import]
-from sqlalchemy import select
 
-from app.models.project import Architecture, Project
+from fastapi import HTTPException, status
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.ext.asyncio.session import AsyncSession
+
+from app.models.project import Architecture, Diagram, Project
 from app.schemas.architecture import ProjectSaveRequest
 
 
-async def get_projects(user_id: str, start: int, count: int, search: str | None, db: AsyncSession):
+async def get_projects(
+    user_id: str, start: int, count: int, search: str | None, db: AsyncSession
+):
     try:
         user_uuid = uuid.UUID(user_id)
 
@@ -52,7 +44,9 @@ async def get_projects(user_id: str, start: int, count: int, search: str | None,
                         "user_id": str(p.user_id),
                         "title": p.title,
                         "requirements": p.requirements,
-                        "created_at": p.created_at.isoformat() if p.created_at else None,
+                        "created_at": p.created_at.isoformat()
+                        if p.created_at
+                        else None,
                     }
                     for p in projects
                 ],
@@ -66,10 +60,9 @@ async def get_projects(user_id: str, start: int, count: int, search: str | None,
     except SQLAlchemyError:
         raise HTTPException(status_code=500, detail="Database error")
 
+
 async def get_architecture_by_project_id(
-    project_id: str,
-    user_id: str,
-    db: AsyncSession
+    project_id: str, user_id: str, db: AsyncSession
 ):
     try:
         project_uuid = uuid.UUID(project_id)
@@ -79,8 +72,7 @@ async def get_architecture_by_project_id(
             select(Architecture)
             .join(Project, Architecture.project_id == Project.id)
             .where(
-                Architecture.project_id == project_uuid,
-                Project.user_id == user_uuid
+                Architecture.project_id == project_uuid, Project.user_id == user_uuid
             )
         )
 
@@ -89,8 +81,7 @@ async def get_architecture_by_project_id(
 
         if not architecture:
             raise HTTPException(
-                status_code=404,
-                detail="Architecture not found or access denied"
+                status_code=404, detail="Architecture not found or access denied"
             )
 
         return {
@@ -106,7 +97,9 @@ async def get_architecture_by_project_id(
         raise HTTPException(status_code=500, detail="Database error")
 
 
-async def save_project_and_architecture(payload: ProjectSaveRequest, user_id: str, db: AsyncSession):
+async def save_project_and_architecture(
+    payload: ProjectSaveRequest, user_id: str, db: AsyncSession
+):
     if user_id != payload.user_id:
         raise HTTPException(status_code=403, detail="Unauthorized")
     try:
@@ -159,14 +152,17 @@ async def save_project_and_architecture(payload: ProjectSaveRequest, user_id: st
             detail="Database error",
         )
 
-async def update_architecture(project_id: str, mermaid_code: str, user_id: str, db: AsyncSession):
+
+async def update_architecture(
+    project_id: str, mermaid_code: str, user_id: str, db: AsyncSession
+):
     try:
-        user_uuid = uuid.UUID(user_id)
+        # TODO: validation is pending
+        # user_uuid = uuid.UUID(user_id)
         project_uuid = uuid.UUID(project_id)
 
         architecture = await db.execute(
-            select(Architecture)
-            .where(Architecture.project_id == project_uuid)
+            select(Architecture).where(Architecture.project_id == project_uuid)
         )
         architecture = architecture.scalars().first()
 
@@ -195,13 +191,19 @@ async def update_architecture(project_id: str, mermaid_code: str, user_id: str, 
             detail="Database error",
         )
 
-async def save_diagram(project_id: str, diagram_type: str, mermaid_code: str, user_id: str, db: AsyncSession):
+
+async def save_diagram(
+    project_id: str,
+    diagram_type: str,
+    mermaid_code: str,
+    user_id: str,
+    db: AsyncSession,
+):
     try:
         project_uuid = uuid.UUID(project_id)
 
-        existing_project =  await db.execute(
-            select(Project)
-            .where(Project.id == project_uuid)
+        existing_project = await db.execute(
+            select(Project).where(Project.id == project_uuid)
         )
         existing_project = existing_project.scalars().first()
 
@@ -210,11 +212,11 @@ async def save_diagram(project_id: str, diagram_type: str, mermaid_code: str, us
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Project not found",
             )
-    
+
         if str(user_id) != str(existing_project.user_id):
             print("Unauthorized User !!")
-            print("expected=",existing_project.user_id)
-            print("actual=",user_id)
+            print("expected=", existing_project.user_id)
+            print("actual=", user_id)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Unauthorized",
@@ -246,13 +248,13 @@ async def save_diagram(project_id: str, diagram_type: str, mermaid_code: str, us
             detail="Database error",
         )
 
+
 async def get_diagrams(project_id: str, user_id: str, db: AsyncSession):
     try:
         project_uuid = uuid.UUID(project_id)
 
         existing_project = await db.execute(
-            select(Project)
-            .where(Project.id == project_uuid)
+            select(Project).where(Project.id == project_uuid)
         )
         existing_project = existing_project.scalars().first()
 
@@ -261,7 +263,7 @@ async def get_diagrams(project_id: str, user_id: str, db: AsyncSession):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Project not found",
             )
-    
+
         if str(user_id) != str(existing_project.user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -269,8 +271,7 @@ async def get_diagrams(project_id: str, user_id: str, db: AsyncSession):
             )
 
         diagrams = await db.execute(
-            select(Diagram)
-            .where(Diagram.project_id == project_uuid)
+            select(Diagram).where(Diagram.project_id == project_uuid)
         )
         diagrams = diagrams.scalars().all()
 

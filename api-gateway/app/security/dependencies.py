@@ -1,20 +1,21 @@
-import jwt 
-from app.security.jwks import get_signing_key
-from app.security.config import CLIENT_ID, ASGARDEO_ISSUER
+from typing import Annotated
 
-# pyrefly: ignore [missing-import]
+import jwt
 from fastapi import Depends, HTTPException
-# pyrefly: ignore [missing-import]
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.security.config import ASGARDEO_ISSUER, CLIENT_ID
+from app.security.jwks import get_signing_key
 
 security = HTTPBearer()
 
+
 async def verify_token(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
 ):
     token = credentials.credentials
     return verify_token_string(token)
+
 
 def verify_token_string(token: str):
     try:
@@ -37,6 +38,6 @@ def verify_token_string(token: str):
     except jwt.InvalidIssuerError:
         raise HTTPException(status_code=401, detail="Invalid issuer")
 
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(e)
         raise HTTPException(status_code=401, detail="Invalid token")

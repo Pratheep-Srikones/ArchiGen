@@ -1,12 +1,17 @@
 import json
+import logging
 import os
 
+from fastapi import HTTPException
 from google import genai
 from google.genai import types
 
 from app.config.config import config
 from app.config.redis import get_redis_client
 from app.schemas.chat import ArchitectureData
+from app.utils.uuid import generate_uuid
+
+logger = logging.getLogger(__name__)
 
 # Initialize the native async client
 client = genai.Client(api_key=config.gemini_api_key)
@@ -27,8 +32,12 @@ async def get_chat_response(user_id: str, session_id: str, user_question: str) -
         # 1. Fetch the Architecture Context (The Hot Cache)
         arch_data = await redis_client.get(arch_key)
 
+        # B7: Raise HTTPException 404 rather than returning a 200 text string
         if not arch_data:
-            return "Session expired or architecture not found. Please start a new chat session."
+            raise HTTPException(
+                status_code=404,
+                detail="Session expired or architecture not found. Please start a new chat session.",
+            )
 
         # 2. Fetch the Chat History
         raw_history = await redis_client.lrange(history_key, 0, -1)
@@ -101,10 +110,17 @@ async def get_chat_response(user_id: str, session_id: str, user_question: str) -
 
         return ai_reply
 
-    except Exception as e:  # noqa: BLE001
-        print(f"Error during chat generation: {e!s}")
-        # In a real app, you might want to raise an HTTPException here
-        return "I encountered an internal error while trying to process your request."
+    except HTTPException:
+        raise
+    except Exception as e:
+        run_id = str(generate_uuid())
+        logger.error(
+            "Error during chat generation [run_id=%s]: %s", run_id, e, exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal error processing chat request (run_id: {run_id}): {str(e)}",
+        ) from e
 
 
 async def generate_diagram(context: ArchitectureData, diagram_type: str, prompt: str):
@@ -143,6 +159,14 @@ async def generate_diagram(context: ArchitectureData, diagram_type: str, prompt:
         clean_code = response.text.replace("```mermaid", "").replace("```", "").strip()
         return clean_code
 
-    except Exception as e:  # noqa: BLE001
-        print(f"Diagram generation error: {e!s}")
-        raise ValueError("Failed to generate diagram.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        run_id = str(generate_uuid())
+        logger.error(
+            "Diagram generation error [run_id=%s]: %s", run_id, e, exc_info=True
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate diagram (run_id: {run_id}): {str(e)}",
+        ) from e

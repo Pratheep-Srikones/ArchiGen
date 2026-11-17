@@ -1,38 +1,26 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
+from app.schemas.architecture import (
+    ArchitectureData,
+    MicroSectionSchema,
+    RepoNodeSchema,
+    TechItemSchema,
+    ValidationVerdict,
+)
 
-class TechItemSchema(BaseModel):
-    name: str
-    layer: Literal[
-        "Frontend", "Backend", "Database", "Infrastructure", "DevOps", "Messaging"
-    ]
-    role: str
-    justification: str
-
-
-class MicroSectionSchema(BaseModel):
-    title: str
-    body: str
-
-
-# Recursive Model for Directory Structure
-class RepoNodeSchema(BaseModel):
-    name: str
-    type: Literal["directory", "file"]
-    annotation: str | None = None
-    children: list["RepoNodeSchema"] | None = Field(default_factory=list)
-
-
-class ArchitectureData(BaseModel):
-    title: str
-    requirements: str
-    architecture: str
-    mermaid_code: str
-    micro: list[MicroSectionSchema]
-    tech_stack: list[TechItemSchema]
-    repo: list[RepoNodeSchema]
+__all__ = [
+    "ArchitectureData",
+    "ChatRequest",
+    "CreateChatRequest",
+    "GenerateDiagramRequest",
+    "MicroSectionSchema",
+    "ModifyDiagramRequest",
+    "RepoNodeSchema",
+    "TechItemSchema",
+    "ValidationVerdict",
+]
 
 
 class ChatRequest(BaseModel):
@@ -45,7 +33,9 @@ class CreateChatRequest(BaseModel):
 
 
 class GenerateDiagramRequest(BaseModel):
-    context: ArchitectureData
+    project_id: str | None = None
+    session_id: str | None = None
+    context: ArchitectureData | None = None
     diagram_type: Literal[
         "sequence",
         "class",
@@ -61,7 +51,9 @@ class GenerateDiagramRequest(BaseModel):
 
 
 class ModifyDiagramRequest(BaseModel):
-    context: ArchitectureData
+    project_id: str | None = None
+    session_id: str | None = None
+    context: ArchitectureData | None = None
     diagram_type: Literal[
         "sequence",
         "class",

@@ -140,7 +140,9 @@ json_packager_agent = Agent(
     3. Micro Sections: Summarize the subsystems and components from `architecture_at_small` into micro sections with title and body.
     4. Tech Stack: Parse the chosen technologies from `tech_stack_selection` into tech stack items with name, layer (Frontend|Backend|Database|Infrastructure|DevOps|Messaging), role, and justification.
     5. Mermaid Code: Extract raw Mermaid syntax from `mermaid_diagram`. Strip any enclosing ``` or ```mermaid markdown code blocks — return raw Mermaid syntax ONLY.
-    6. Repository Structure: Parse the tree from `repo_structure` into hierarchical repo nodes (name, type: "directory"|"file", annotation, children).
+    6. Repository Structure: Parse the tree from `repo_structure` into hierarchical repo nodes strictly adhering to RepoNodeSchema objects:
+       - Every node in `repo` and every item in `children` MUST be an object: `{"name": "...", "type": "directory" | "file", "annotation": "...", "children": [...]}`.
+       - NEVER output bare strings in `children`. For example, instead of `"children": ["src", "package.json"]`, you MUST output `{"name": "src", "type": "directory", "children": []}` and `{"name": "package.json", "type": "file", "children": []}`.
     
     CRITICAL RULES:
     1. Return data strictly conforming to the ArchitectureData schema.

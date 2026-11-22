@@ -1,5 +1,6 @@
 import inspect
 import json
+import os
 import unittest
 from unittest.mock import AsyncMock, patch
 
@@ -153,7 +154,8 @@ class TestB5B9Fixes(unittest.IsolatedAsyncioTestCase):
     # ── B9: Dependencies check ────────────────────────────────────────────────
     def test_b9_trimmed_requirements(self):
         """B9: requirements.txt must not contain deprecated or bloated packages."""
-        with open("/code/requirements.txt") as f:
+        req_path = "/code/requirements.txt" if os.path.exists("/code/requirements.txt") else os.path.join(os.path.dirname(__file__), "../requirements.txt")
+        with open(req_path) as f:
             content = f.read().lower()
 
         # Deprecated SDK must NOT be present

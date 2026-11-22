@@ -1,5 +1,114 @@
 import { api } from "@/config/axiosConfig";
-import { MicroSection, RepoNode, TechItem } from "@/lib/mock-data";
+import {
+  ArchitectureOutput,
+  MicroSection,
+  RepoNode,
+  TechItem,
+} from "@/lib/mock-data";
+import { useAuthStore } from "@/store/useAuthStore";
+
+export interface StreamEvent {
+  run_id: string;
+  type:
+    | "agent_start"
+    | "agent_output"
+    | "verdict"
+    | "tool_call"
+    | "tool_result"
+    | "final"
+    | "error";
+  agent?: string;
+  iteration?: number;
+  data?: any;
+  timestamp?: number;
+  ms?: number;
+}
+
+export type StreamEventCallback = (event: StreamEvent) => void;
+
+export const streamArchitectureResponse = async (
+  prompt: string,
+  onEvent: StreamEventCallback,
+  signal?: AbortSignal,
+): Promise<ArchitectureOutput> => {
+  const token = useAuthStore.getState().token;
+  const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8002/api";
+  const url = `${apiUrl}/ai/generate-architecture/stream`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ user_idea: prompt }),
+    signal,
+  });
+
+  if (!response.ok) {
+    let errorDetail = "Failed to start architecture stream";
+    try {
+      const errJson = await response.json();
+      errorDetail = errJson.detail || errorDetail;
+    } catch {
+      // ignore
+    }
+    throw new Error(errorDetail);
+  }
+
+  if (!response.body) {
+    throw new Error("ReadableStream not supported on this browser.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalArchitecture: ArchitectureOutput | null = null;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() || "";
+
+      for (const part of parts) {
+        const trimmed = part.trim();
+        if (!trimmed) continue;
+
+        for (const line of trimmed.split("\n")) {
+          if (line.startsWith("data: ")) {
+            const jsonText = line.slice(6).trim();
+            if (!jsonText) continue;
+            try {
+              const event = JSON.parse(jsonText) as StreamEvent;
+              onEvent(event);
+              if (event.type === "final" && event.data) {
+                finalArchitecture = event.data as ArchitectureOutput;
+              } else if (event.type === "error" && event.data?.error) {
+                throw new Error(event.data.error);
+              }
+            } catch (err) {
+              if (err instanceof Error && err.message !== "Unexpected token") {
+                throw err;
+              }
+            }
+          }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (!finalArchitecture) {
+    throw new Error("Stream closed before receiving final architecture specification.");
+  }
+
+  return finalArchitecture;
+};
 
 type CreateChatRequest = {
   architecture: {

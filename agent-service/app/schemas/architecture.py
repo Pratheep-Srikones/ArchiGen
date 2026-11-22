@@ -1,6 +1,6 @@
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ValidationVerdict(BaseModel):
@@ -34,9 +34,29 @@ class MicroSectionSchema(BaseModel):
 # Recursive Model for Directory Structure
 class RepoNodeSchema(BaseModel):
     name: str
-    type: Literal["directory", "file"]
+    type: Literal["directory", "file"] = "file"
     annotation: str | None = None
     children: list["RepoNodeSchema"] | None = Field(default_factory=list)
+
+    @field_validator("children", mode="before")
+    @classmethod
+    def coerce_children(cls, v: Any) -> Any:
+        if not isinstance(v, list):
+            return v
+        coerced = []
+        for item in v:
+            if isinstance(item, str):
+                is_dir = item.endswith("/") or ("." not in item)
+                clean_name = item.rstrip("/")
+                coerced.append({
+                    "name": clean_name,
+                    "type": "directory" if is_dir else "file",
+                    "annotation": None,
+                    "children": [],
+                })
+            else:
+                coerced.append(item)
+        return coerced
 
 
 class ArchitectureData(BaseModel):

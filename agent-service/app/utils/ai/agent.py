@@ -1,7 +1,8 @@
 import json
 import logging
 import os
-from typing import Any
+import time
+from typing import Any, AsyncGenerator
 
 from dotenv import load_dotenv
 from google.adk import Context, Workflow
@@ -12,6 +13,7 @@ from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 from app.schemas.architecture import ArchitectureData, ValidationVerdict
+from app.schemas.stream import StreamEvent, ResponseType
 from app.utils.uuid import generate_uuid
 
 logger = logging.getLogger(__name__)
@@ -138,7 +140,9 @@ json_packager_agent = Agent(
     3. Micro Sections: Summarize the subsystems and components from `architecture_at_small` into micro sections with title and body.
     4. Tech Stack: Parse the chosen technologies from `tech_stack_selection` into tech stack items with name, layer (Frontend|Backend|Database|Infrastructure|DevOps|Messaging), role, and justification.
     5. Mermaid Code: Extract raw Mermaid syntax from `mermaid_diagram`. Strip any enclosing ``` or ```mermaid markdown code blocks — return raw Mermaid syntax ONLY.
-    6. Repository Structure: Parse the tree from `repo_structure` into hierarchical repo nodes (name, type: "directory"|"file", annotation, children).
+    6. Repository Structure: Parse the tree from `repo_structure` into hierarchical repo nodes strictly adhering to RepoNodeSchema objects:
+       - Every node in `repo` and every item in `children` MUST be an object: `{"name": "...", "type": "directory" | "file", "annotation": "...", "children": [...]}`.
+       - NEVER output bare strings in `children`. For example, instead of `"children": ["src", "package.json"]`, you MUST output `{"name": "src", "type": "directory", "children": []}` and `{"name": "package.json", "type": "file", "children": []}`.
     
     CRITICAL RULES:
     1. Return data strictly conforming to the ArchitectureData schema.
@@ -279,6 +283,56 @@ def _clean_mermaid_code(code: str) -> str:
     return trimmed
 
 
+def _extract_and_validate_architecture(
+    active_session: Any,
+    streamed_final_architecture: Any,
+    final_output: str,
+    user_requirement: str,
+) -> ArchitectureData:
+    raw_data = None
+    if (
+        active_session
+        and hasattr(active_session, "state")
+        and "final_architecture" in active_session.state
+    ):
+        raw_data = active_session.state["final_architecture"]
+    elif streamed_final_architecture is not None:
+        raw_data = streamed_final_architecture
+
+    # Resilient fallback to JSON text parsing only if output_key was missing in state
+    if raw_data is None:
+        logger.warning(
+            "final_architecture not found in session state, attempting fallback extraction"
+        )
+        start_idx = final_output.find("{")
+        end_idx = final_output.rfind("}")
+        if start_idx != -1 and end_idx != -1:
+            raw_data = json.loads(final_output[start_idx : end_idx + 1])
+        else:
+            raise ValueError(
+                "Core framework error: Failed to extract architecture from agent state."
+            )
+
+    # Validate output with ArchitectureData
+    if isinstance(raw_data, ArchitectureData):
+        arch_model = raw_data
+    elif isinstance(raw_data, dict):
+        arch_model = ArchitectureData.model_validate(raw_data)
+    elif isinstance(raw_data, str):
+        arch_model = ArchitectureData.model_validate_json(raw_data)
+    else:
+        raise ValueError(
+            f"Unexpected data type for final_architecture: {type(raw_data)}"
+        )
+
+    # Inject deterministic fields
+    arch_model.requirements = user_requirement
+    arch_model.projectId = str(generate_uuid())
+    arch_model.mermaid_code = _clean_mermaid_code(arch_model.mermaid_code)
+
+    return arch_model
+
+
 async def run_architecture_generator(
     user_requirement: str, user_id: str
 ) -> str:
@@ -323,45 +377,190 @@ async def run_architecture_generator(
                 if hasattr(part, "text") and part.text:
                     final_output += part.text
 
-    # B3: Read structured output from session state by output_key
     active_session = await session_service.get_session(
         app_name="arch_generator", user_id=user_id, session_id=session_id
     )
-    raw_data = None
-    if active_session and "final_architecture" in active_session.state:
-        raw_data = active_session.state["final_architecture"]
-    elif streamed_final_architecture is not None:
-        raw_data = streamed_final_architecture
-
-    # Resilient fallback to JSON text parsing only if output_key was missing in state
-    if raw_data is None:
-        logger.warning(
-            "final_architecture not found in session state, attempting fallback extraction"
-        )
-        start_idx = final_output.find("{")
-        end_idx = final_output.rfind("}")
-        if start_idx != -1 and end_idx != -1:
-            raw_data = json.loads(final_output[start_idx : end_idx + 1])
-        else:
-            raise ValueError(
-                "Core framework error: Failed to extract architecture from agent state."
-            )
-
-    # Validate output with ArchitectureData
-    if isinstance(raw_data, ArchitectureData):
-        arch_model = raw_data
-    elif isinstance(raw_data, dict):
-        arch_model = ArchitectureData.model_validate(raw_data)
-    elif isinstance(raw_data, str):
-        arch_model = ArchitectureData.model_validate_json(raw_data)
-    else:
-        raise ValueError(
-            f"Unexpected data type for final_architecture: {type(raw_data)}"
-        )
-
-    # Inject deterministic fields
-    arch_model.requirements = user_requirement
-    arch_model.projectId = str(generate_uuid())
-    arch_model.mermaid_code = _clean_mermaid_code(arch_model.mermaid_code)
+    arch_model = _extract_and_validate_architecture(
+        active_session, streamed_final_architecture, final_output, user_requirement
+    )
 
     return arch_model.model_dump_json(indent=2)
+
+
+async def run_architecture_generator_stream(
+    user_requirement: str, user_id: str
+) -> AsyncGenerator[str, None]:
+    run_id = str(generate_uuid())
+    start_time = time.time()
+
+    def get_elapsed_ms() -> float:
+        return round((time.time() - start_time) * 1000, 2)
+
+    current_agent: str | None = None
+    iteration: int = 0
+    final_output: str = ""
+    streamed_final_architecture: Any = None
+
+    try:
+        # 1. Initialize ADK session & runner
+        session_service = InMemorySessionService()
+        runner = Runner(
+            agent=architecture_workflow,
+            app_name="arch_generator",
+            session_service=session_service,
+        )
+        session = await session_service.create_session(
+            app_name="arch_generator", user_id=user_id
+        )
+        session_id = session.id
+
+        message = types.Content(role="user", parts=[types.Part(text=user_requirement)])
+
+        # 2. Iterate runner stream and emit real-time events
+        async for event in runner.run_async(
+            user_id=user_id, session_id=session_id, new_message=message
+        ):
+            # Detect agent transitions
+            agent_name = (
+                event.author
+                if event.author and event.author != "user"
+                else (
+                    event.node_info.name
+                    if hasattr(event, "node_info") and event.node_info
+                    else None
+                )
+            )
+
+            if (
+                agent_name
+                and agent_name not in ("user", "", None)
+                and agent_name != current_agent
+            ):
+                current_agent = agent_name
+                yield StreamEvent(
+                    run_id=run_id,
+                    type=ResponseType.START,
+                    agent=current_agent,
+                    iteration=iteration,
+                    data={"message": f"Starting agent: {current_agent}"},
+                    timestamp=get_elapsed_ms(),
+                ).to_sse()
+
+            # Tool calls
+            if hasattr(event, "get_function_calls"):
+                for fc in event.get_function_calls():
+                    yield StreamEvent(
+                        run_id=run_id,
+                        type=ResponseType.TOOL_CALL,
+                        agent=current_agent,
+                        iteration=iteration,
+                        data={
+                            "tool": getattr(fc, "name", str(fc)),
+                            "args": getattr(fc, "args", {}),
+                        },
+                        timestamp=get_elapsed_ms(),
+                    ).to_sse()
+
+            # Tool results
+            if hasattr(event, "get_function_responses"):
+                for fr in event.get_function_responses():
+                    yield StreamEvent(
+                        run_id=run_id,
+                        type=ResponseType.TOOL_RESULT,
+                        agent=current_agent,
+                        iteration=iteration,
+                        data={
+                            "tool": getattr(fr, "name", str(fr)),
+                            "response": getattr(fr, "response", {}),
+                        },
+                        timestamp=get_elapsed_ms(),
+                    ).to_sse()
+
+            # Agent text output chunk preview
+            chunk_text = ""
+            if hasattr(event, "content") and event.content and event.content.parts:
+                for part in event.content.parts:
+                    if hasattr(part, "text") and part.text:
+                        final_output += part.text
+                        chunk_text += part.text
+
+            if chunk_text.strip():
+                preview = chunk_text.strip()
+                if len(preview) > 300:
+                    preview = preview[:300] + "..."
+                yield StreamEvent(
+                    run_id=run_id,
+                    type=ResponseType.OUTPUT,
+                    agent=current_agent,
+                    iteration=iteration,
+                    data={"preview": preview},
+                    timestamp=get_elapsed_ms(),
+                ).to_sse()
+
+            # State deltas & validator verdicts
+            if hasattr(event, "actions") and event.actions:
+                state_delta = event.actions.state_delta or {}
+                if "final_architecture" in state_delta:
+                    streamed_final_architecture = state_delta["final_architecture"]
+
+                if "at_large_validation_result" in state_delta:
+                    val = state_delta["at_large_validation_result"]
+                    path, issues, score = _parse_validation_verdict(val)
+                    yield StreamEvent(
+                        run_id=run_id,
+                        type=ResponseType.VERDICT,
+                        agent="ArchitectureAtLargeValidator",
+                        iteration=iteration,
+                        data={"verdict": path, "issues": issues, "score": score},
+                        timestamp=get_elapsed_ms(),
+                    ).to_sse()
+
+                if "at_small_validation_result" in state_delta:
+                    val = state_delta["at_small_validation_result"]
+                    path, issues, score = _parse_validation_verdict(val)
+                    yield StreamEvent(
+                        run_id=run_id,
+                        type=ResponseType.VERDICT,
+                        agent="ArchitectureAtSmallValidator",
+                        iteration=iteration,
+                        data={"verdict": path, "issues": issues, "score": score},
+                        timestamp=get_elapsed_ms(),
+                    ).to_sse()
+
+                # Router edge retry
+                if getattr(event.actions, "route", None) == "retry":
+                    iteration += 1
+
+        # 3. Read final architecture from state and emit FINAL event
+        active_session = await session_service.get_session(
+            app_name="arch_generator", user_id=user_id, session_id=session_id
+        )
+
+        arch_model = _extract_and_validate_architecture(
+            active_session, streamed_final_architecture, final_output, user_requirement
+        )
+
+        yield StreamEvent(
+            run_id=run_id,
+            type=ResponseType.FINAL,
+            agent="JSONPackager",
+            iteration=iteration,
+            data=arch_model.model_dump(),
+            timestamp=get_elapsed_ms(),
+        ).to_sse()
+
+    except Exception as e:
+        logger.error(
+            "Error during architecture generator stream [run_id=%s]: %s",
+            run_id,
+            e,
+            exc_info=True,
+        )
+        yield StreamEvent(
+            run_id=run_id,
+            type=ResponseType.ERROR,
+            agent=current_agent,
+            iteration=iteration,
+            data={"error": str(e), "run_id": run_id},
+            timestamp=get_elapsed_ms(),
+        ).to_sse()

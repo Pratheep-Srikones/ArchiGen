@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import AsyncGenerator
 
 from fastapi import HTTPException
 
@@ -44,3 +45,16 @@ async def generate_architecture(requirement: str, user_id: str) -> dict:
             status_code=502,
             detail=f"Error during architecture generation (run_id: {run_id}): {str(e)}",
         ) from e
+
+
+async def generate_architecture_stream(
+    requirement: str, user_id: str
+) -> AsyncGenerator[str, None]:
+    if not requirement or not requirement.strip():
+        raise HTTPException(status_code=400, detail="requirement is required")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    async for chunk in agent.run_architecture_generator_stream(requirement, user_id):
+        yield chunk
+

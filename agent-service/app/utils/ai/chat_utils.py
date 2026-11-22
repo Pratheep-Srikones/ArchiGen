@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 
 from fastapi import HTTPException
 from google import genai
@@ -9,6 +10,7 @@ from google.genai import types
 from app.config.config import config
 from app.config.redis import get_redis_client
 from app.schemas.chat import ArchitectureData
+from app.tools.mermaid import validate_mermaid_syntax
 from app.utils.uuid import generate_uuid
 
 logger = logging.getLogger(__name__)
@@ -92,6 +94,31 @@ async def get_chat_response(user_id: str, session_id: str, user_question: str) -
         response = await chat.send_message(user_question)
         ai_reply = response.text
 
+        # Validate and auto-correct any Mermaid diagrams embedded in the chat response
+        if "```mermaid" in ai_reply or "```" in ai_reply:
+            pattern = re.compile(r"```(?:mermaid)?\s*\n(.*?)\n```", re.DOTALL)
+            match = pattern.search(ai_reply)
+            if match:
+                candidate_code = match.group(1).strip()
+                val_res = validate_mermaid_syntax(candidate_code)
+                if not val_res.get("valid"):
+                    logger.warning(
+                        "Mermaid diagram in chat response failed validation: %s. Requesting repair...",
+                        val_res.get("error"),
+                    )
+                    repair_response = await chat.send_message(
+                        f"The Mermaid diagram in your response failed syntax validation with error:\n{val_res.get('error')}\n"
+                        "Please provide the corrected Mermaid diagram code enclosed in ```mermaid ```."
+                    )
+                    if repair_response and repair_response.text:
+                        repair_match = pattern.search(repair_response.text)
+                        if repair_match:
+                            repaired_code = repair_match.group(1).strip()
+                            if validate_mermaid_syntax(repaired_code).get("valid"):
+                                ai_reply = ai_reply.replace(
+                                    match.group(0), f"```mermaid\n{repaired_code}\n```"
+                                )
+
         # 6. Save the new conversation turns & Enforce Sliding Window
         user_turn = json.dumps({"role": "user", "text": user_question})
         ai_turn = json.dumps({"role": "model", "text": ai_reply})
@@ -123,7 +150,10 @@ async def get_chat_response(user_id: str, session_id: str, user_question: str) -
         ) from e
 
 
-async def generate_diagram(context: ArchitectureData, diagram_type: str, prompt: str):
+MAX_DIAGRAM_RETRIES = 3
+
+
+async def generate_diagram(context: ArchitectureData, diagram_type: str, prompt: str) -> str:
     arch_string = json.dumps(context.model_dump(), indent=2)
 
     system_instruction = f"""
@@ -157,6 +187,52 @@ async def generate_diagram(context: ArchitectureData, diagram_type: str, prompt:
 
         # Clean up any accidental markdown formatting the LLM might hallucinate
         clean_code = response.text.replace("```mermaid", "").replace("```", "").strip()
+
+        # Tool-using validation & self-correction loop (max 3 retries)
+        validation = validate_mermaid_syntax(clean_code)
+        attempts = 0
+        while not validation.get("valid") and attempts < MAX_DIAGRAM_RETRIES:
+            attempts += 1
+            logger.warning(
+                "Mermaid diagram validation failed (attempt %s/%s): %s. Triggering self-correction...",
+                attempts,
+                MAX_DIAGRAM_RETRIES,
+                validation.get("error"),
+            )
+            repair_prompt = f"""The generated Mermaid diagram contains syntax errors:
+Syntax Error:
+{validation.get('error')}
+
+Invalid Diagram Code:
+{clean_code}
+
+Please fix the syntax error and return ONLY the corrected, valid Mermaid.js `{diagram_type}` code.
+Ensure declarations, nodes, and brackets are balanced and standard Mermaid.js syntax.
+Do not include markdown code fences or explanations.
+"""
+            repair_response = await client.aio.models.generate_content(
+                model=MODEL,
+                contents=repair_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    temperature=0.1,
+                ),
+            )
+            clean_code = repair_response.text.replace("```mermaid", "").replace("```", "").strip()
+            validation = validate_mermaid_syntax(clean_code)
+
+        if not validation.get("valid"):
+            logger.error(
+                "Mermaid diagram could not be self-corrected after %s attempts: %s",
+                MAX_DIAGRAM_RETRIES,
+                validation.get("error"),
+            )
+        elif attempts > 0:
+            logger.info(
+                "Mermaid diagram successfully self-corrected after %s attempt(s).",
+                attempts,
+            )
+
         return clean_code
 
     except HTTPException:

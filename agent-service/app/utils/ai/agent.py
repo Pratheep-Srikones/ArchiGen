@@ -9,12 +9,14 @@ from google.adk import Context, Workflow
 from google.adk.agents import Agent
 from google.adk.events import Event
 from google.adk.runners import Runner
+from google.adk.tools import FunctionTool
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
 from app.schemas.architecture import ArchitectureData, ValidationVerdict
 from app.schemas.stream import StreamEvent, ResponseType
 from app.utils.uuid import generate_uuid
+from app.tools.mermaid import validate_mermaid_syntax
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +109,8 @@ tech_stack_agent = Agent(
     output_key="tech_stack_selection",
 )
 
+mermaid_validation_tool = FunctionTool(validate_mermaid_syntax)
+
 mermaid_agent = Agent(
     name="MermaidArchitect",
     model=MODEL,
@@ -114,8 +118,13 @@ mermaid_agent = Agent(
     instruction="""You are a System Designer. 
     Review the architecture in `architecture_outline`, `architecture_at_small`, and the chosen stack in `tech_stack_selection`.
     Generate a Mermaid.js flowchart (starting with flowchart TD or graph TD) mapping out the system architecture and data flow. 
-    Return ONLY valid Mermaid syntax enclosed in a markdown ```mermaid code block.""",
+
+    CRITICAL: You have access to the tool `validate_mermaid_syntax`.
+    Always call the `validate_mermaid_syntax` tool before finalizing your diagram.
+    If the validation tool reports syntax errors (valid=False), inspect the error, correct the Mermaid syntax, and re-validate (up to 3 attempts).
+    Once validated as valid, return ONLY the valid Mermaid syntax enclosed in a markdown ```mermaid code block.""",
     output_key="mermaid_diagram",
+    tools=[mermaid_validation_tool],
 )
 
 repo_structure_agent = Agent(

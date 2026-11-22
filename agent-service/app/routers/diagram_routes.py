@@ -14,4 +14,4 @@ async def generate_diagram_route(
     request: GenerateDiagramRequest,
     user_id: Annotated[str, Depends(get_current_user_id)],
 ):
-    return await generate_diagram(request)
+    return await generate_diagram(request, user_id)

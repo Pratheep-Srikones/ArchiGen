@@ -10,6 +10,7 @@ PORT = int(os.getenv("PORT", "8010"))
 APP_NAME = "agents"
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+PROJECT_SERVICE_URL = os.getenv("PROJECT_SERVICE_URL", "http://project_service:8001")
 
 AGENT_RETRY_OPTIONS = types.HttpRetryOptions(
     attempts=5,  # Maximum retry attempts
@@ -27,6 +28,7 @@ class Config:
         self.app_name = APP_NAME
         self.redis_host = REDIS_HOST
         self.redis_port = REDIS_PORT
+        self.project_service_url = PROJECT_SERVICE_URL
 
 
 config = Config()

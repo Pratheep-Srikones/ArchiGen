@@ -12,7 +12,7 @@ router = APIRouter()
 @router.post("/chat", response_model=dict, status_code=200)
 async def chat_route(
     payload: ChatRequest, user_id: Annotated[str, Depends(get_current_user_id)]
-):  # user_id= Depends(get_current_user_id)
+):
     return await get_chat_response(payload.user_question, payload.session_id, user_id)
 
 
@@ -20,4 +20,4 @@ async def chat_route(
 async def create_new_chat_route(
     payload: CreateChatRequest, user_id: Annotated[str, Depends(get_current_user_id)]
 ):
-    return await create_new_chat(payload, user_id)
+    return await create_new_chat(payload.architecture, user_id)

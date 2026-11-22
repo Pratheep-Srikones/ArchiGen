@@ -9,10 +9,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { z } from "zod";
+import { toast } from "sonner";
 import { NavigationBar } from "@/components/architect/NavigationBar";
-import {
-  type ArchitectureOutput,
-} from "@/lib/mock-data";
+import type { ArchitectureOutput } from "@/lib/mock-data";
 import {
   streamArchitectureResponse,
   type StreamEvent,
@@ -35,6 +34,10 @@ import {
   Activity,
   Wrench,
   CheckCircle2,
+  Copy,
+  Zap,
+  ArrowRight,
+  Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +59,7 @@ interface PipelineStep {
   subMessage: string;
   icon: React.ComponentType<any>;
   status: "pending" | "active" | "completed" | "retry";
+  phase: "macro" | "micro" | "specialist" | "synthesis";
   verdict?: {
     verdict: "ok" | "retry";
     score: number;
@@ -67,7 +71,7 @@ interface TraceLog {
   id: string;
   time: string;
   agent: string;
-  type: string;
+  type: "start" | "output" | "verdict_ok" | "verdict_retry" | "tool_call" | "tool_result" | "final" | "error" | "init";
   message: string;
 }
 
@@ -76,19 +80,21 @@ const INITIAL_STEPS: PipelineStep[] = [
     id: "macro_gen",
     agentName: "ArchitectureGenerator",
     label: "Macro Architecture Synthesis",
-    role: "Lead Architect",
+    role: "Lead Systems Architect",
     subMessage: "Designing core subsystems, high-level topology, and service boundaries",
     icon: Layout,
     status: "active",
+    phase: "macro",
   },
   {
     id: "macro_val",
     agentName: "ArchitectureAtLargeValidator",
-    label: "Macro Quality & Feasibility Gate",
-    role: "Principal Reviewer",
-    subMessage: "Evaluating architectural feasibility, security boundaries, and scalability",
+    label: "Macro Feasibility & Quality Gate",
+    role: "Principal Architectural Reviewer",
+    subMessage: "Evaluating scalability, security boundaries, and architectural soundness",
     icon: ShieldCheck,
     status: "pending",
+    phase: "macro",
   },
   {
     id: "micro_gen",
@@ -98,6 +104,7 @@ const INITIAL_STEPS: PipelineStep[] = [
     subMessage: "Specifying subsystem internals, API contracts, and communication protocols",
     icon: Layers,
     status: "pending",
+    phase: "micro",
   },
   {
     id: "micro_val",
@@ -107,6 +114,7 @@ const INITIAL_STEPS: PipelineStep[] = [
     subMessage: "Auditing internal subsystem contracts, edge conditions, and error recovery",
     icon: ShieldCheck,
     status: "pending",
+    phase: "micro",
   },
   {
     id: "tech_stack",
@@ -116,15 +124,17 @@ const INITIAL_STEPS: PipelineStep[] = [
     subMessage: "Selecting optimal databases, frameworks, messaging, and cloud primitives",
     icon: Cpu,
     status: "pending",
+    phase: "specialist",
   },
   {
     id: "diagram",
     agentName: "MermaidArchitect",
     label: "System Flowchart Synthesis",
-    role: "Visual Designer",
-    subMessage: "Generating verified Mermaid.js flowchart and component relationship graph",
+    role: "Visual System Designer",
+    subMessage: "Compiling verified Mermaid.js flowchart and component relationship graph",
     icon: GitBranch,
     status: "pending",
+    phase: "specialist",
   },
   {
     id: "repo",
@@ -134,17 +144,21 @@ const INITIAL_STEPS: PipelineStep[] = [
     subMessage: "Constructing hierarchical monorepo layout and service directory structures",
     icon: FolderGit,
     status: "pending",
+    phase: "specialist",
   },
   {
     id: "packager",
     agentName: "JSONPackager",
     label: "Final Specification Synthesis",
     role: "Packaging Engine",
-    subMessage: "Validating schema compliance and compiling complete ArchitectureData package",
+    subMessage: "Validating schema compliance and compiling full ArchitectureData package",
     icon: Terminal,
     status: "pending",
+    phase: "synthesis",
   },
 ];
+
+type LogFilter = "all" | "verdicts" | "tools" | "output";
 
 function ProcessingPage() {
   const { prompt } = Route.useSearch();
@@ -152,6 +166,9 @@ function ProcessingPage() {
 
   const [steps, setSteps] = useState<PipelineStep[]>(INITIAL_STEPS);
   const [activeAgent, setActiveAgent] = useState<string>("ArchitectureGenerator");
+  const [currentThought, setCurrentThought] = useState<string>(
+    "Deconstructing system requirements and establishing subsystem boundaries..."
+  );
   const [iteration, setIteration] = useState<number>(0);
   const [qualityScore, setQualityScore] = useState<number | null>(null);
   const [eventCount, setEventCount] = useState<number>(0);
@@ -160,7 +177,7 @@ function ProcessingPage() {
   const [architecture, setArchitecture] = useState<ArchitectureOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [traceLogs, setTraceLogs] = useState<TraceLog[]>([]);
-  const [isTerminalExpanded, setIsTerminalExpanded] = useState<boolean>(true);
+  const [activeFilter, setActiveFilter] = useState<LogFilter>("all");
   const [isDone, setIsDone] = useState<boolean>(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -183,12 +200,12 @@ function ProcessingPage() {
     return () => clearInterval(interval);
   }, [isDone, error]);
 
-  // Auto-scroll terminal logs
+  // Auto-scroll terminal logs to bottom unless scrolled up
   useEffect(() => {
     if (logsContainerRef.current) {
       logsContainerRef.current.scrollTop = logsContainerRef.current.scrollHeight;
     }
-  }, [traceLogs]);
+  }, [traceLogs, activeFilter]);
 
   // Main SSE Stream Consumer
   useEffect(() => {
@@ -197,10 +214,14 @@ function ProcessingPage() {
     abortControllerRef.current = new AbortController();
     startTimeRef.current = Date.now();
 
-    const addLog = (agent: string, type: string, message: string) => {
+    const addLog = (
+      agent: string,
+      type: TraceLog["type"],
+      message: string
+    ) => {
       const nowOffset = ((Date.now() - startTimeRef.current) / 1000).toFixed(1);
       setTraceLogs((prev) => [
-        ...prev.slice(-40), // keep recent 40 logs
+        ...prev.slice(-60), // keep recent 60 logs
         {
           id: `${Date.now()}-${Math.random()}`,
           time: `+${nowOffset}s`,
@@ -211,7 +232,7 @@ function ProcessingPage() {
       ]);
     };
 
-    addLog("Orchestrator", "init", "Connecting to ArchiGen multi-agent event stream...");
+    addLog("Orchestrator", "init", "Initialized Google ADK workflow runner and session context");
 
     streamArchitectureResponse(
       prompt,
@@ -226,7 +247,7 @@ function ProcessingPage() {
           case "agent_start": {
             const agentName = event.agent || "";
             setActiveAgent(agentName);
-            addLog(agentName, "start", `Agent active: ${agentName}`);
+            addLog(agentName, "start", `Agent activated: ${agentName}`);
 
             setSteps((prev) => {
               const targetIdx = prev.findIndex((s) => s.agentName === agentName);
@@ -250,6 +271,7 @@ function ProcessingPage() {
           case "agent_output": {
             const preview = event.data?.preview;
             if (preview) {
+              setCurrentThought(preview);
               addLog(event.agent || "", "output", preview);
             }
             break;
@@ -270,13 +292,13 @@ function ProcessingPage() {
               addLog(
                 agentName,
                 "verdict_retry",
-                `Validation REJECTED (Score: ${score}/10) — Issues: ${issues.join("; ")}`
+                `Review REJECTED (Score: ${score}/10) — Loop triggered: ${issues.join("; ")}`
               );
             } else {
               addLog(
                 agentName,
                 "verdict_ok",
-                `Validation PASSED (Score: ${score}/10) — Ready for next stage`
+                `Review PASSED (Score: ${score}/10) — Output approved for downstream execution`
               );
             }
 
@@ -302,13 +324,13 @@ function ProcessingPage() {
           case "tool_call": {
             setToolCallsCount((prev) => prev + 1);
             const tool = event.data?.tool || "tool";
-            addLog(event.agent || "", "tool_call", `Tool call: ${tool}`);
+            addLog(event.agent || "", "tool_call", `Tool Invocation: ${tool}`);
             break;
           }
 
           case "tool_result": {
             const tool = event.data?.tool || "tool";
-            addLog(event.agent || "", "tool_result", `Tool completed: ${tool}`);
+            addLog(event.agent || "", "tool_result", `Tool Result: ${tool} succeeded`);
             break;
           }
 
@@ -316,7 +338,7 @@ function ProcessingPage() {
             setIsDone(true);
             const finalData = event.data as ArchitectureOutput;
             setArchitecture(finalData);
-            addLog("JSONPackager", "final", "Full architecture payload synthesized successfully!");
+            addLog("JSONPackager", "final", "Full architecture specification validated and compiled successfully!");
 
             setSteps((prev) =>
               prev.map((s) => ({ ...s, status: "completed" }))
@@ -325,7 +347,7 @@ function ProcessingPage() {
           }
 
           case "error": {
-            const errMsg = event.data?.error || "Unknown stream error";
+            const errMsg = event.data?.error || "Unknown stream error occurred";
             setError(errMsg);
             addLog(event.agent || "Error", "error", errMsg);
             break;
@@ -335,7 +357,7 @@ function ProcessingPage() {
       abortControllerRef.current.signal
     ).catch((err: Error) => {
       if (err.name === "AbortError") {
-        addLog("Client", "cancel", "Generation aborted by user");
+        addLog("Client", "start", "Generation cancelled by user");
         return;
       }
       console.error("Stream generation failed:", err);
@@ -347,7 +369,7 @@ function ProcessingPage() {
     };
   }, [prompt]);
 
-  // Navigate to result page on completion
+  // Navigate to result page on completion with smooth delay
   useEffect(() => {
     if (architecture) {
       const timer = setTimeout(() => {
@@ -355,7 +377,7 @@ function ProcessingPage() {
           to: "/result",
           state: { architecture } as Record<string, unknown>,
         });
-      }, 1200);
+      }, 1500);
       return () => clearTimeout(timer);
     }
   }, [architecture, navigate]);
@@ -363,7 +385,7 @@ function ProcessingPage() {
   const completedCount = steps.filter((s) => s.status === "completed").length;
   const progressPercent = isDone
     ? 100
-    : Math.min(95, Math.round((completedCount / steps.length) * 100));
+    : Math.min(96, Math.round((completedCount / steps.length) * 100));
 
   // Format elapsed time MM:SS.s
   const formattedTime = useMemo(() => {
@@ -375,131 +397,176 @@ function ProcessingPage() {
 
   const activeStep = steps.find((s) => s.status === "active");
 
+  const filteredLogs = useMemo(() => {
+    if (activeFilter === "verdicts") {
+      return traceLogs.filter((l) => l.type === "verdict_ok" || l.type === "verdict_retry");
+    }
+    if (activeFilter === "tools") {
+      return traceLogs.filter((l) => l.type === "tool_call" || l.type === "tool_result");
+    }
+    if (activeFilter === "output") {
+      return traceLogs.filter((l) => l.type === "output" || l.type === "final");
+    }
+    return traceLogs;
+  }, [traceLogs, activeFilter]);
+
+  const copyTraceToClipboard = () => {
+    const fullText = traceLogs
+      .map((l) => `[${l.time}] [${l.agent}] [${l.type.toUpperCase()}] ${l.message}`)
+      .join("\n");
+    navigator.clipboard.writeText(fullText);
+    toast.success("Execution trace copied to clipboard");
+  };
+
   return (
-    <div className="min-h-screen bg-cream bg-[radial-gradient(rgba(28,28,28,0.04)_1px,transparent_1px)] [background-size:20px_20px] flex flex-col font-sans">
+    <div className="min-h-screen bg-cream bg-[radial-gradient(rgba(28,28,28,0.04)_1px,transparent_1px)] [background-size:24px_24px] flex flex-col font-sans selection:bg-blueprint/20">
       <NavigationBar showNewButton={false} />
 
-      <main className="flex-1 pt-24 pb-20 px-4 sm:px-6 flex items-center justify-center">
-        <div className="max-w-3xl w-full">
-          {/* Header Title & Network Badge */}
-          <div className="text-center mb-6">
-            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blueprint-light border border-blueprint-border/30 text-caption font-semibold text-blueprint shadow-sm">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blueprint opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-blueprint" />
-              </span>
-              ArchiGen Multi-Agent Swarm · Live SSE
+      <main className="flex-1 pt-24 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+        {/* Top Header Badge */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blueprint-light border border-blueprint-border/30 text-caption font-semibold text-blueprint shadow-xs mb-3">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blueprint opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-blueprint" />
             </span>
-
-            <h1 className="text-subsection font-bold text-charcoal mt-2 tracking-tight">
-              Autonomous Architecture Generation
-            </h1>
-            <p className="text-caption text-muted max-w-md mx-auto mt-1">
-              8 collaborative agents analyzing constraints, synthesizing subsystems, and enforcing architectural quality gates.
-            </p>
+            <span>Multi-Agent Swarm Orchestrator · Real-Time ADK Trace</span>
           </div>
 
-          {/* Real-Time Telemetry Stats Bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            {/* 1. Active Agent */}
-            <div className="rounded-xl border border-border-passive bg-off-white/90 p-3.5 shadow-sm">
-              <div className="flex items-center gap-1.5 text-caption font-medium text-muted">
+          <h1 className="text-3xl md:text-4xl font-bold text-charcoal tracking-tight">
+            Autonomous System Architecture
+          </h1>
+          <p className="text-sm text-muted max-w-xl mx-auto mt-1.5">
+            Real-time reflection, specialist tool execution, and structured verification across 8 collaborative agents.
+          </p>
+        </div>
+
+        {/* Real-Time Telemetry HUD Bar */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-8">
+          {/* 1. Active Agent Card */}
+          <div className="rounded-xl border border-border-passive bg-off-white/90 backdrop-blur-sm p-4 shadow-xs hover:border-charcoal-20 transition-all">
+            <div className="flex items-center justify-between text-caption font-medium text-muted">
+              <span className="flex items-center gap-1.5">
                 <Activity size={13} className="text-blueprint animate-pulse" />
                 ACTIVE AGENT
-              </div>
-              <div className="mt-1 font-semibold text-charcoal truncate text-sm" title={activeAgent}>
-                {isDone ? "Completed" : activeStep?.role || activeAgent}
-              </div>
-              <div className="text-[11px] text-muted truncate">
-                {isDone ? "All checks passed" : activeAgent}
-              </div>
+              </span>
+              <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-blueprint-light text-blueprint font-semibold">
+                Turn
+              </span>
             </div>
+            <div className="mt-2 font-semibold text-charcoal truncate text-[15px]" title={activeAgent}>
+              {isDone ? "Workflow Complete" : activeStep?.role || activeAgent}
+            </div>
+            <div className="text-xs text-muted font-mono truncate mt-0.5">
+              {isDone ? "All artifacts sealed" : activeAgent}
+            </div>
+          </div>
 
-            {/* 2. Latency / Stopwatch */}
-            <div className="rounded-xl border border-border-passive bg-off-white/90 p-3.5 shadow-sm">
-              <div className="flex items-center gap-1.5 text-caption font-medium text-muted">
+          {/* 2. Latency Stopwatch */}
+          <div className="rounded-xl border border-border-passive bg-off-white/90 backdrop-blur-sm p-4 shadow-xs hover:border-charcoal-20 transition-all">
+            <div className="flex items-center justify-between text-caption font-medium text-muted">
+              <span className="flex items-center gap-1.5">
                 <Clock size={13} className="text-charcoal-40" />
-                ELAPSED TIME
-              </div>
-              <div className="mt-1 font-mono font-bold text-charcoal text-base">
-                {formattedTime}
-              </div>
-              <div className="text-[11px] text-muted">
-                {isDone ? "Stream finalized" : "Real-time execution"}
-              </div>
+                EXECUTION TIME
+              </span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-charcoal-04 text-charcoal-70 font-medium">
+                Live
+              </span>
             </div>
+            <div className="mt-2 font-mono font-bold text-charcoal text-[17px] tracking-tight">
+              {formattedTime}
+            </div>
+            <div className="text-xs text-muted truncate mt-0.5">
+              {isDone ? "Total latency captured" : "High-precision timer"}
+            </div>
+          </div>
 
-            {/* 3. Reflection / Retry Loops */}
-            <div className="rounded-xl border border-border-passive bg-off-white/90 p-3.5 shadow-sm">
-              <div className="flex items-center gap-1.5 text-caption font-medium text-muted">
+          {/* 3. Reflection Loops / Revisions */}
+          <div className="rounded-xl border border-border-passive bg-off-white/90 backdrop-blur-sm p-4 shadow-xs hover:border-charcoal-20 transition-all">
+            <div className="flex items-center justify-between text-caption font-medium text-muted">
+              <span className="flex items-center gap-1.5">
                 <RotateCcw size={13} className={iteration > 0 ? "text-amber-500 animate-spin" : "text-charcoal-40"} />
-                REVISIONS (LOOPS)
-              </div>
-              <div className="mt-1 flex items-center gap-1.5">
-                <span className="font-semibold text-charcoal text-base">
-                  {iteration} <span className="text-xs text-muted font-normal">/ 2 max</span>
+                REFLECTION LOOPS
+              </span>
+              {iteration > 0 && (
+                <span className="text-[10px] bg-amber-500/10 text-amber-600 border border-amber-500/20 px-1.5 py-0.5 rounded-full font-medium">
+                  Active
                 </span>
-                {iteration > 0 && (
-                  <span className="text-[10px] bg-amber-500/10 text-amber-600 border border-amber-500/20 px-1.5 py-0.5 rounded-full font-medium">
-                    Self-Correction
-                  </span>
-                )}
-              </div>
-              <div className="text-[11px] text-muted">
-                {iteration > 0 ? "Feedback applied" : "Zero retries so far"}
-              </div>
+              )}
             </div>
+            <div className="mt-2 flex items-baseline gap-1.5">
+              <span className="font-semibold text-charcoal text-[17px]">
+                {iteration}
+              </span>
+              <span className="text-xs text-muted font-normal">/ 2 max allowed</span>
+            </div>
+            <div className="text-xs text-muted truncate mt-0.5">
+              {iteration > 0 ? "Self-correction applied" : "Clean initial passes"}
+            </div>
+          </div>
 
-            {/* 4. Quality Score / Telemetry */}
-            <div className="rounded-xl border border-border-passive bg-off-white/90 p-3.5 shadow-sm">
-              <div className="flex items-center gap-1.5 text-caption font-medium text-muted">
+          {/* 4. Quality Score & Telemetry */}
+          <div className="rounded-xl border border-border-passive bg-off-white/90 backdrop-blur-sm p-4 shadow-xs hover:border-charcoal-20 transition-all">
+            <div className="flex items-center justify-between text-caption font-medium text-muted">
+              <span className="flex items-center gap-1.5">
                 <ShieldCheck size={13} className="text-success" />
                 QUALITY VERDICT
-              </div>
-              <div className="mt-1 flex items-center gap-1.5">
-                {qualityScore !== null ? (
-                  <>
-                    <span className="font-bold text-charcoal text-base">
-                      {qualityScore}
-                    </span>
-                    <span className="text-xs text-muted font-normal">/ 10</span>
-                    <span className="text-[10px] bg-success/10 text-success border border-success/30 px-1.5 py-0.5 rounded-full font-medium">
-                      Passed
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-muted text-sm font-normal">Evaluating...</span>
-                )}
-              </div>
-              <div className="text-[11px] text-muted">
-                {eventCount} stream events · {toolCallsCount} tools
-              </div>
+              </span>
+              {qualityScore !== null && (
+                <span className="text-[10px] bg-success/10 text-success border border-success/30 px-1.5 py-0.5 rounded-full font-medium">
+                  Audited
+                </span>
+              )}
+            </div>
+            <div className="mt-2 flex items-baseline gap-1.5">
+              {qualityScore !== null ? (
+                <>
+                  <span className="font-bold text-charcoal text-[17px]">
+                    {qualityScore}
+                  </span>
+                  <span className="text-xs text-muted font-normal">/ 10 points</span>
+                </>
+              ) : (
+                <span className="text-muted text-sm italic">In review...</span>
+              )}
+            </div>
+            <div className="text-xs text-muted truncate mt-0.5 font-mono">
+              {eventCount} events · {toolCallsCount} tools
             </div>
           </div>
+        </div>
 
-          {/* User Prompt Specification Box */}
-          <div className="rounded-xl border border-border-passive bg-off-white/80 p-4 shadow-sm mb-6">
-            <span className="text-caption text-muted font-medium flex items-center gap-2">
-              <Terminal size={14} className="text-charcoal-40" />
-              GIVEN USER REQUIREMENT
+        {/* User Prompt Specification Box */}
+        <div className="rounded-xl border border-border-passive bg-off-white/80 p-4 shadow-xs mb-8 flex items-start gap-3">
+          <Terminal size={16} className="text-charcoal-40 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <span className="text-[11px] font-semibold text-charcoal-40 uppercase tracking-wider block mb-1">
+              INPUT REQUIREMENT SPECIFICATION
             </span>
-            <div className="mt-2 text-[14px] italic text-charcoal line-clamp-2 pl-3 border-l-2 border-blueprint/50">
+            <p className="text-sm italic text-charcoal pl-3 border-l-2 border-blueprint/60 line-clamp-2">
               "{prompt}"
-            </div>
+            </p>
           </div>
+        </div>
 
-          {/* Stepper Card */}
-          <div className="rounded-xl border border-border-passive bg-off-white/90 backdrop-blur-sm p-6 shadow-sm mb-6">
-            {/* Progress Bar & Header */}
+        {/* Main 2-Column Responsive Workspace */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Column (7 Cols): Multi-Agent Stepper */}
+          <div className="lg:col-span-7 rounded-xl border border-border-passive bg-off-white/90 backdrop-blur-sm p-6 shadow-sm">
+            {/* Pipeline Header and Progress Bar */}
             <div className="mb-6">
               <div className="flex justify-between items-center text-caption mb-2">
-                <span className="font-medium text-charcoal flex items-center gap-2">
-                  <span>Pipeline Execution</span>
-                  <span className="text-muted text-xs">
-                    ({completedCount} of {steps.length} agents finished)
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-charcoal text-sm">
+                    Multi-Agent Pipeline
                   </span>
+                  <span className="text-muted text-xs font-mono">
+                    ({completedCount}/{steps.length} completed)
+                  </span>
+                </div>
+                <span className="font-bold font-mono text-blueprint text-sm">
+                  {progressPercent}%
                 </span>
-                <span className="font-bold font-mono text-blueprint text-sm">{progressPercent}%</span>
               </div>
               <div className="h-2 bg-border-passive rounded-full overflow-hidden">
                 <div
@@ -509,7 +576,7 @@ function ProcessingPage() {
               </div>
             </div>
 
-            {/* List of Steps */}
+            {/* Stepper Timeline */}
             <ol role="list" className="space-y-1">
               {steps.map((step, idx) => (
                 <PipelineStepRow
@@ -523,91 +590,144 @@ function ProcessingPage() {
             </ol>
           </div>
 
-          {/* Live Agent Terminal Trace (Collapsible) */}
-          <div className="rounded-xl border border-charcoal-20 bg-[#16181D] text-gray-200 shadow-md overflow-hidden mb-6">
-            <div
-              onClick={() => setIsTerminalExpanded(!isTerminalExpanded)}
-              className="flex items-center justify-between px-4 py-2.5 bg-[#1E2128] border-b border-charcoal-20 cursor-pointer select-none hover:bg-[#252831] transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#FF5F56]" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#27C93F]" />
+          {/* Right Column (5 Cols): Live Activity & Trace Console */}
+          <div className="lg:col-span-5 space-y-6">
+            {/* Live Agent Thought Card */}
+            <div className="rounded-xl border border-border-passive bg-off-white/95 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Zap size={14} className="text-blueprint animate-bounce" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-charcoal">
+                    Live Agent Reasoning
+                  </span>
                 </div>
-                <span className="text-xs font-mono font-medium text-gray-400 ml-2 flex items-center gap-1.5">
-                  <Terminal size={12} />
-                  Live Agent Execution Trace
+                <span className="text-[11px] text-muted font-mono">
+                  {activeStep?.role || "Synthesizing"}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-xs font-mono text-gray-400">
-                <span>{traceLogs.length} events</span>
-                {isTerminalExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+
+              <div className="bg-cream/60 rounded-lg p-3.5 border border-border-passive/60 text-xs text-charcoal-70 leading-relaxed min-h-[4.5rem] flex items-center">
+                <p className="line-clamp-3 italic">
+                  "{currentThought}"
+                  <span className="inline-block w-1.5 h-3 bg-blueprint animate-pulse ml-1 align-middle" />
+                </p>
               </div>
             </div>
 
-            {isTerminalExpanded && (
+            {/* Live Terminal Trace Console */}
+            <div className="rounded-xl border border-charcoal-20 bg-[#14161B] text-gray-200 shadow-md overflow-hidden">
+              {/* Terminal Header */}
+              <div className="flex items-center justify-between px-4 py-3 bg-[#1C1F26] border-b border-charcoal-20">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#FF5F56]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#27C93F]" />
+                  </div>
+                  <span className="text-xs font-mono font-medium text-gray-300 ml-1.5 flex items-center gap-1.5">
+                    <Terminal size={12} className="text-blueprint" />
+                    Agent Trace Console
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={copyTraceToClipboard}
+                    title="Copy full execution trace"
+                    className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                  >
+                    <Copy size={13} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Filter Tabs */}
+              <div className="flex items-center gap-1 px-4 py-1.5 bg-[#171920] border-b border-charcoal-20/60 text-[11px] font-mono">
+                <Filter size={11} className="text-gray-500 mr-1" />
+                {(["all", "verdicts", "tools", "output"] as LogFilter[]).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveFilter(tab)}
+                    className={cn(
+                      "px-2 py-0.5 rounded capitalize transition-colors",
+                      activeFilter === tab
+                        ? "bg-blueprint/20 text-blueprint font-semibold border border-blueprint/30"
+                        : "text-gray-400 hover:text-gray-200"
+                    )}
+                  >
+                    {tab}
+                  </button>
+                ))}
+                <span className="ml-auto text-[10px] text-gray-500">
+                  {filteredLogs.length} entries
+                </span>
+              </div>
+
+              {/* Terminal Output Body */}
               <div
                 ref={logsContainerRef}
-                className="p-4 font-mono text-[12px] leading-relaxed max-h-52 overflow-y-auto space-y-1.5 bg-[#121418]"
+                className="p-4 font-mono text-[11.5px] leading-relaxed h-[360px] overflow-y-auto space-y-2 bg-[#0E1014] select-text"
               >
-                {traceLogs.length === 0 ? (
-                  <div className="text-gray-500 italic">Connecting to agent streaming events...</div>
+                {filteredLogs.length === 0 ? (
+                  <div className="text-gray-500 italic py-4 text-center">
+                    No logs matching selected filter
+                  </div>
                 ) : (
-                  traceLogs.map((log) => (
-                    <div key={log.id} className="flex items-start gap-2">
-                      <span className="text-gray-500 select-none shrink-0">{log.time}</span>
+                  filteredLogs.map((log) => (
+                    <div key={log.id} className="flex items-start gap-2 hover:bg-white/[0.02] py-0.5 rounded px-1 transition-colors">
+                      <span className="text-gray-500 select-none shrink-0 font-light">{log.time}</span>
                       <span className={cn(
-                        "px-1.5 py-0.2 rounded text-[10px] font-semibold uppercase tracking-wider shrink-0",
-                        log.type.includes("verdict_ok") && "bg-green-950 text-green-400 border border-green-800",
-                        log.type.includes("verdict_retry") && "bg-amber-950 text-amber-400 border border-amber-800",
-                        log.type.includes("tool") && "bg-purple-950 text-purple-300 border border-purple-800",
-                        log.type === "final" && "bg-blue-950 text-blue-400 border border-blue-800",
-                        log.type === "error" && "bg-red-950 text-red-400 border border-red-800",
-                        !["verdict_ok", "verdict_retry", "tool_call", "tool_result", "final", "error"].includes(log.type) && "bg-gray-800 text-gray-300"
+                        "px-1.5 py-0.2 rounded text-[9.5px] font-semibold uppercase tracking-wider shrink-0",
+                        log.type === "verdict_ok" && "bg-emerald-950/80 text-emerald-400 border border-emerald-800",
+                        log.type === "verdict_retry" && "bg-amber-950/80 text-amber-300 border border-amber-800 animate-pulse",
+                        log.type.startsWith("tool") && "bg-purple-950/80 text-purple-300 border border-purple-800",
+                        log.type === "final" && "bg-blue-950/80 text-blue-300 border border-blue-800",
+                        log.type === "error" && "bg-red-950/80 text-red-300 border border-red-800",
+                        log.type === "start" && "bg-cyan-950/80 text-cyan-300 border border-cyan-800",
+                        log.type === "init" && "bg-gray-800 text-gray-300",
+                        log.type === "output" && "bg-gray-800/80 text-gray-300"
                       )}>
                         {log.agent}
                       </span>
-                      <span className="text-gray-300 break-words">{log.message}</span>
+                      <span className="text-gray-300 break-words flex-1">{log.message}</span>
                     </div>
                   ))
                 )}
-                <div className="inline-block w-2 h-3.5 bg-blueprint animate-pulse align-middle ml-1" />
+              </div>
+            </div>
+
+            {/* Success Completion Toast Card */}
+            {isDone && (
+              <div className="rounded-xl border border-success/30 bg-success/10 p-4 text-sm text-success font-medium flex items-center justify-between animate-fade-up shadow-xs">
+                <span className="flex items-center gap-2.5">
+                  <CheckCircle2 size={18} className="shrink-0" />
+                  <span>Architecture synthesized! Forwarding to preview...</span>
+                </span>
+                <Sparkles size={16} className="animate-spin text-success" />
+              </div>
+            )}
+
+            {/* Error Message */}
+            {error && (
+              <div className="rounded-xl border border-error/30 bg-error/10 p-4 text-sm text-error font-medium flex items-center gap-2.5 shadow-xs">
+                <AlertTriangle size={18} className="shrink-0" />
+                <span>{error}</span>
               </div>
             )}
           </div>
+        </div>
 
-          {/* Success Banner */}
-          {isDone && (
-            <div className="rounded-xl border border-success/30 bg-success/10 px-4 py-3.5 text-sm text-success font-medium flex items-center justify-between animate-fade-up mb-6">
-              <span className="flex items-center gap-2">
-                <CheckCircle2 size={18} />
-                Architecture synthesized successfully! Transitioning to preview...
-              </span>
-              <Sparkles size={16} className="animate-spin" />
-            </div>
-          )}
-
-          {/* Error Message */}
-          {error && (
-            <div className="rounded-xl border border-error/30 bg-error/10 px-4 py-3.5 text-sm text-error font-medium flex items-center gap-2 mb-6">
-              <AlertTriangle size={18} />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Cancel button */}
-          <div className="text-center">
-            <button
-              onClick={() => {
-                abortControllerRef.current?.abort();
-                navigate({ to: "/" });
-              }}
-              className="text-caption text-muted hover:text-charcoal underline underline-offset-4 decoration-border-passive transition-colors"
-            >
-              Cancel generation and return home
-            </button>
-          </div>
+        {/* Footer Actions */}
+        <div className="mt-10 text-center">
+          <button
+            onClick={() => {
+              abortControllerRef.current?.abort();
+              navigate({ to: "/" });
+            }}
+            className="text-caption text-muted hover:text-charcoal underline underline-offset-4 decoration-border-passive transition-colors"
+          >
+            Cancel generation and return home
+          </button>
         </div>
       </main>
     </div>
@@ -652,14 +772,14 @@ function PipelineStepRow({ step, isFirst, isLast, prevStatus }: StepRowProps) {
       role="listitem"
       aria-label={`${step.label} — ${step.status}`}
       className={cn(
-        "relative flex items-start gap-4 px-4 py-3 transition-all duration-300 rounded-xl border border-transparent",
-        isActive && "bg-blueprint-light/50 border-blueprint-border/30 shadow-xs",
+        "relative flex items-start gap-4 px-4 py-3.5 transition-all duration-300 rounded-xl border border-transparent",
+        isActive && "bg-blueprint-light/60 border-blueprint-border/40 shadow-xs",
         isRetry && "bg-amber-500/10 border-amber-500/30 shadow-xs",
         isCompleted && "bg-charcoal-03/10",
       )}
     >
       {/* Timeline Circle and Connecting Lines */}
-      <div className="relative flex flex-col items-center shrink-0 self-stretch min-h-[3.5rem]">
+      <div className="relative flex flex-col items-center shrink-0 self-stretch min-h-[3.8rem]">
         {!isFirst && (
           <div className={cn("absolute top-0 bottom-1/2 left-1/2 -translate-x-1/2 z-0", topLineClass)} />
         )}
@@ -700,7 +820,7 @@ function PipelineStepRow({ step, isFirst, isLast, prevStatus }: StepRowProps) {
       </div>
 
       {/* Step Info */}
-      <div className="flex-1 min-w-0 py-1">
+      <div className="flex-1 min-w-0 py-0.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <h3
@@ -732,7 +852,7 @@ function PipelineStepRow({ step, isFirst, isLast, prevStatus }: StepRowProps) {
               {step.verdict.verdict === "ok" ? (
                 <>✓ Quality: {step.verdict.score}/10</>
               ) : (
-                <>⚠ Revise (Score: {step.verdict.score}/10)</>
+                <>⚠ Revision Loop ({step.verdict.score}/10)</>
               )}
             </span>
           )}
@@ -742,9 +862,12 @@ function PipelineStepRow({ step, isFirst, isLast, prevStatus }: StepRowProps) {
 
         {/* Retry Issues Details Accordion */}
         {step.verdict && step.verdict.verdict === "retry" && step.verdict.issues?.length > 0 && (
-          <div className="mt-2 text-xs bg-amber-50 border border-amber-200 rounded-lg p-2 text-amber-800">
-            <span className="font-semibold block mb-0.5">Reflection Feedback:</span>
-            <ul className="list-disc list-inside space-y-0.5">
+          <div className="mt-2 text-xs bg-amber-50/80 border border-amber-200 rounded-lg p-2.5 text-amber-900 shadow-xs">
+            <span className="font-semibold block mb-1 text-[11.5px] text-amber-950 flex items-center gap-1">
+              <AlertTriangle size={12} className="text-amber-600" />
+              Validator Reflection Feedback:
+            </span>
+            <ul className="list-disc list-inside space-y-0.5 text-amber-800">
               {step.verdict.issues.map((issue, idx) => (
                 <li key={idx}>{issue}</li>
               ))}

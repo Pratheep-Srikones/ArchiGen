@@ -9,7 +9,7 @@ from google.adk import Context, Workflow
 from google.adk.agents import Agent
 from google.adk.events import Event
 from google.adk.runners import Runner
-from google.adk.tools import FunctionTool
+from google.adk.tools import FunctionTool, google_search
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
@@ -99,6 +99,8 @@ tech_stack_agent = Agent(
     instruction="""You are a Principal Software Architect. 
     Review the original user requirement and the architecture in state (`architecture_outline` and `architecture_at_small`). 
     Select a technology stack that is explicitly tailored to that specific product domain.
+
+    You can use google search tool to identify new libraries/frameworks and technologies and validate selected technologies
     
     For example:
     - If it's a gaming forum, focus on web/community features (e.g., Next.js, Node/Go, Postgres for relational threads, Redis for caching/sessions).
@@ -107,6 +109,7 @@ tech_stack_agent = Agent(
     Categorize technologies by layer (Frontend, Backend, Database, Infrastructure, DevOps, Messaging).
     Provide a clear, structured list of the chosen technologies with a brief 1-sentence justification for each.""",
     output_key="tech_stack_selection",
+    tools=[google_search],
 )
 
 mermaid_validation_tool = FunctionTool(validate_mermaid_syntax)

@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config.redis import close_redis, connect_redis
+from app.core.error_handlers import register_error_handlers
 from app.core.logging import get_logger, setup_logging
 from app.middleware.correlation import RequestLoggingMiddleware
 from app.routers.ai_routes import router as ai_router
@@ -35,6 +36,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+# Register centralized error handlers (RFC 7807 error schema)
+register_error_handlers(app)
 
 # Add RequestLoggingMiddleware to trace all incoming requests & bind contextvars
 app.add_middleware(RequestLoggingMiddleware)

@@ -12,6 +12,9 @@ REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 PROJECT_SERVICE_URL = os.getenv("PROJECT_SERVICE_URL", "http://project_service:8001")
 MODEL = os.getenv("MODEL", "gemini-2.5-flash")
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_FORMAT = os.getenv("LOG_FORMAT", "console" if ENVIRONMENT == "development" else "json").lower()
 
 # Rate-limiting & Pacing Configuration (Free Tier Resiliency)
 INTER_AGENT_DELAY_SECONDS = float(os.getenv("INTER_AGENT_DELAY_SECONDS", "2.0"))
@@ -38,6 +41,9 @@ class Config:
         self.redis_host = REDIS_HOST
         self.redis_port = REDIS_PORT
         self.project_service_url = PROJECT_SERVICE_URL
+        self.environment = ENVIRONMENT
+        self.log_level = LOG_LEVEL
+        self.log_format = LOG_FORMAT
         self.inter_agent_delay_seconds = INTER_AGENT_DELAY_SECONDS
         self.rate_limit_retry_options = RATE_LIMIT_RETRY_OPTIONS
         # Backward-compatibility alias

@@ -9,9 +9,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config.redis import close_redis, connect_redis
+from app.core.logging import get_logger, setup_logging
 from app.routers.ai_routes import router as ai_router
 from app.routers.chat_routes import router as chat_router
 from app.routers.diagram_routes import router as diagram_router
+
+setup_logging()
+logger = get_logger(__name__)
 
 allowed_origins = [
     "http://localhost:5173",
@@ -22,8 +26,10 @@ allowed_origins = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("Starting up agent-service...")
     await connect_redis()
     yield
+    logger.info("Shutting down agent-service...")
     await close_redis()
 
 

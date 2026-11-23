@@ -2,6 +2,7 @@ import json
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from app.config.config import config
 from app.schemas.chat import ArchitectureData
 from app.tools.mermaid import quick_sanity_check, validate_mermaid_syntax
 from app.utils.ai import agent, chat_utils
@@ -202,6 +203,69 @@ flowchart LR
                 self.assertIn("flowchart TD\n    A --> B", reply)
                 self.assertNotIn("[broken", reply)
                 self.assertEqual(mock_chat.send_message.call_count, 2)
+
+
+    # ── 5. Rate Limit Resilience & PacedGemini Tests ─────────────────────────
+
+    def test_paced_gemini_and_retry_config(self):
+        # 1. Model retry options must be configured with >= 5 attempts and include 429
+        retry_opts = agent.gemini_model.retry_options
+        self.assertIsNotNone(retry_opts)
+        self.assertGreaterEqual(retry_opts.attempts, 5)
+        self.assertIn(429, retry_opts.http_status_codes)
+        self.assertGreaterEqual(retry_opts.initial_delay, 1.0)
+
+        # 2. All 8 ADK agents must be wired to use the resilient gemini_model
+        all_agents = [
+            agent.architect,
+            agent.at_large_validator,
+            agent.architecture_at_small_generator,
+            agent.at_small_validator,
+            agent.tech_stack_agent,
+            agent.mermaid_agent,
+            agent.repo_structure_agent,
+            agent.json_packager_agent,
+        ]
+        for ag in all_agents:
+            self.assertEqual(ag.model, agent.gemini_model)
+
+    async def test_paced_gemini_pacing_delay(self):
+        import time
+        from unittest.mock import AsyncMock
+
+        paced = agent.PacedGemini(
+            model="gemini-2.5-flash",
+            pacing_delay=0.1,
+        )
+
+        mock_req = MagicMock()
+
+        # Mock super().generate_content_async using an async generator
+        async def mock_gen(req, stream=False):
+            yield MagicMock()
+
+        with patch.object(agent.Gemini, "generate_content_async", side_effect=mock_gen):
+            # First call
+            t0 = time.monotonic()
+            async for _ in paced.generate_content_async(mock_req):
+                pass
+
+            # Second call should be delayed by at least 0.1s
+            async for _ in paced.generate_content_async(mock_req):
+                pass
+            elapsed = time.monotonic() - t0
+            self.assertGreaterEqual(elapsed, 0.08)
+
+    def test_chat_utils_retry_options_configured(self):
+        self.assertIsNotNone(chat_utils.RATE_LIMIT_RETRY_OPTIONS)
+        self.assertGreaterEqual(chat_utils.RATE_LIMIT_RETRY_OPTIONS.attempts, 5)
+        self.assertIn(429, chat_utils.RATE_LIMIT_RETRY_OPTIONS.http_status_codes)
+        self.assertEqual(
+            chat_utils.RATE_LIMIT_RETRY_OPTIONS, config.rate_limit_retry_options
+        )
+        self.assertEqual(
+            agent.gemini_model.retry_options, config.rate_limit_retry_options
+        )
 
 
 if __name__ == "__main__":

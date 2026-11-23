@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -15,9 +16,15 @@ from app.utils.uuid import generate_uuid
 
 logger = logging.getLogger(__name__)
 
-# Initialize the native async client
-client = genai.Client(api_key=config.gemini_api_key)
-MODEL = os.getenv("MODEL", "gemini-2.5-flash")
+# Free Tier Resilient Retry Configuration (Second Layer Defense)
+RATE_LIMIT_RETRY_OPTIONS = config.rate_limit_retry_options
+
+# Initialize the native async client with HttpOptions retry support
+client = genai.Client(
+    api_key=config.gemini_api_key,
+    http_options=types.HttpOptions(retry_options=RATE_LIMIT_RETRY_OPTIONS),
+)
+MODEL = config.model
 
 
 async def get_chat_response(user_id: str, session_id: str, user_question: str) -> str:
@@ -106,6 +113,8 @@ async def get_chat_response(user_id: str, session_id: str, user_question: str) -
                         "Mermaid diagram in chat response failed validation: %s. Requesting repair...",
                         val_res.get("error"),
                     )
+                    # Proactive delay to avoid bursting the Free Tier rate limit
+                    await asyncio.sleep(config.inter_agent_delay_seconds)
                     repair_response = await chat.send_message(
                         f"The Mermaid diagram in your response failed syntax validation with error:\n{val_res.get('error')}\n"
                         "Please provide the corrected Mermaid diagram code enclosed in ```mermaid ```."
@@ -193,6 +202,8 @@ async def generate_diagram(context: ArchitectureData, diagram_type: str, prompt:
         attempts = 0
         while not validation.get("valid") and attempts < MAX_DIAGRAM_RETRIES:
             attempts += 1
+            # Proactive delay before repair request to prevent rate-limit bursts
+            await asyncio.sleep(config.inter_agent_delay_seconds)
             logger.warning(
                 "Mermaid diagram validation failed (attempt %s/%s): %s. Triggering self-correction...",
                 attempts,

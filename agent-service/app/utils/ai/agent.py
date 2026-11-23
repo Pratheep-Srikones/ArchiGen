@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -8,11 +9,13 @@ from dotenv import load_dotenv
 from google.adk import Context, Workflow
 from google.adk.agents import Agent
 from google.adk.events import Event
+from google.adk.models import Gemini
 from google.adk.runners import Runner
 from google.adk.tools import FunctionTool, google_search
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
+from app.config.config import config
 from app.schemas.architecture import ArchitectureData, ValidationVerdict
 from app.schemas.stream import StreamEvent, ResponseType
 from app.utils.uuid import generate_uuid
@@ -23,15 +26,52 @@ logger = logging.getLogger(__name__)
 # ── env/config ───────────────────────────────────────────────────────────────
 load_dotenv()
 
-MODEL = os.getenv("MODEL", "gemini-2.5-flash")
+MODEL = config.model
 
 # B1: Maximum allowed retries per validator stage before forcing progress
 MAX_GENERATION_RETRIES = 2
 
+# ── Rate-limiting & Pacing Configuration (Free Tier Resiliency) ───────────────
+_last_llm_call_timestamp: float = 0.0
+
+
+class PacedGemini(Gemini):
+    """
+    Subclasses ADK Gemini model to enforce proactive pacing and retry options
+    to prevent and gracefully handle Free Tier rate limits (429 RESOURCE_EXHAUSTED).
+    """
+
+    pacing_delay: float = config.inter_agent_delay_seconds
+
+    async def generate_content_async(
+        self, llm_request: Any, stream: bool = False
+    ) -> AsyncGenerator[Any, None]:
+        global _last_llm_call_timestamp
+        now = time.monotonic()
+        elapsed = now - _last_llm_call_timestamp
+        if _last_llm_call_timestamp > 0 and elapsed < self.pacing_delay:
+            wait_time = self.pacing_delay - elapsed
+            logger.info(
+                "Pacing LLM call: waiting %.2fs to respect rate limits...", wait_time
+            )
+            await asyncio.sleep(wait_time)
+        _last_llm_call_timestamp = time.monotonic()
+        async for resp in super().generate_content_async(llm_request, stream=stream):
+            yield resp
+
+
+RATE_LIMIT_RETRY_OPTIONS = config.rate_limit_retry_options
+
+gemini_model = PacedGemini(
+    model=MODEL,
+    retry_options=RATE_LIMIT_RETRY_OPTIONS,
+    pacing_delay=config.inter_agent_delay_seconds,
+)
+
 # ── 1. Phase One: Architecture At Large ──────────────────────────────────────
 architect = Agent(
     name="ArchitectureGenerator",
-    model=MODEL,
+    model=gemini_model,
     description="Generates a detailed architecture at large for a given requirement",
     instruction="""
     You are an experienced software architect. Propose a detailed architecture at large based on the user's requirements.
@@ -46,7 +86,7 @@ architect = Agent(
 
 at_large_validator = Agent(
     name="ArchitectureAtLargeValidator",
-    model=MODEL,
+    model=gemini_model,
     description="Validates the proposed macro architecture against scalability, security, and feasibility criteria.",
     instruction="""
     You are a senior software architect reviewing a proposed architecture outline.
@@ -64,7 +104,7 @@ at_large_validator = Agent(
 # ── 2. Phase Two: Architecture At Small ──────────────────────────────────────
 architecture_at_small_generator = Agent(
     name="ArchitectureAtSmallGenerator",
-    model=MODEL,
+    model=gemini_model,
     description="Generates detailed technical specifications from an approved architecture outline",
     instruction="""
     Generate a detailed technical architecture description based on the approved outline in `architecture_outline`.
@@ -76,7 +116,7 @@ architecture_at_small_generator = Agent(
 
 at_small_validator = Agent(
     name="ArchitectureAtSmallValidator",
-    model=MODEL,
+    model=gemini_model,
     description="Validates detailed technical specifications for soundness, security, and scalability.",
     instruction="""
     You are a senior technical architect reviewing detailed technical specifications.
@@ -94,7 +134,7 @@ at_small_validator = Agent(
 # ── 3. Phase Three: The Specialists ──────────────────────────────────────────
 tech_stack_agent = Agent(
     name="TechStackSelector",
-    model=MODEL,
+    model=gemini_model,
     description="Selects an optimal technology stack tailored to the architecture specifications.",
     instruction="""You are a Principal Software Architect. 
     Review the original user requirement and the architecture in state (`architecture_outline` and `architecture_at_small`). 
@@ -116,7 +156,7 @@ mermaid_validation_tool = FunctionTool(validate_mermaid_syntax)
 
 mermaid_agent = Agent(
     name="MermaidArchitect",
-    model=MODEL,
+    model=gemini_model,
     description="Generates a Mermaid.js flowchart mapping out the system architecture and data flow.",
     instruction="""You are a System Designer. 
     Review the architecture in `architecture_outline`, `architecture_at_small`, and the chosen stack in `tech_stack_selection`.
@@ -132,7 +172,7 @@ mermaid_agent = Agent(
 
 repo_structure_agent = Agent(
     name="RepoBuilder",
-    model=MODEL,
+    model=gemini_model,
     description="Generates an exhaustive repository file tree structure.",
     instruction="""You are a Lead Developer setting up a new project. 
     Based on the established tech stack in `tech_stack_selection` and detailed architecture in `architecture_at_small`, generate a complete and standard repository file tree structure using ASCII/markdown format.""",
@@ -141,7 +181,7 @@ repo_structure_agent = Agent(
 
 json_packager_agent = Agent(
     name="JSONPackager",
-    model=MODEL,
+    model=gemini_model,
     description="Synthesizes all specialist outputs into a structured ArchitectureData payload.",
     instruction="""You are an API Response Formatter. 
     Synthesize all architectural specifications from the session state into a structured ArchitectureData payload conforming to the output schema.
@@ -562,6 +602,14 @@ async def run_architecture_generator_stream(
         ).to_sse()
 
     except Exception as e:
+        error_msg = str(e)
+        if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+            user_friendly_error = (
+                "Rate limit exceeded (Free Tier 15 RPM quota). Please wait 30-60 seconds before retrying."
+            )
+        else:
+            user_friendly_error = error_msg
+
         logger.error(
             "Error during architecture generator stream [run_id=%s]: %s",
             run_id,
@@ -573,6 +621,6 @@ async def run_architecture_generator_stream(
             type=ResponseType.ERROR,
             agent=current_agent,
             iteration=iteration,
-            data={"error": str(e), "run_id": run_id},
+            data={"error": user_friendly_error, "run_id": run_id},
             timestamp=get_elapsed_ms(),
         ).to_sse()

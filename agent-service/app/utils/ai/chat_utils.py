@@ -1,6 +1,5 @@
 import asyncio
 import json
-import logging
 import os
 import re
 
@@ -10,11 +9,13 @@ from google.genai import types
 
 from app.config.config import config
 from app.config.redis import get_redis_client
+from app.core.exceptions import AppException, SessionExpiredError
+from app.core.logging import get_logger
 from app.schemas.chat import ArchitectureData
 from app.tools.mermaid import validate_mermaid_syntax
 from app.utils.uuid import generate_uuid
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Free Tier Resilient Retry Configuration (Second Layer Defense)
 RATE_LIMIT_RETRY_OPTIONS = config.rate_limit_retry_options
@@ -41,11 +42,10 @@ async def get_chat_response(user_id: str, session_id: str, user_question: str) -
         # 1. Fetch the Architecture Context (The Hot Cache)
         arch_data = await redis_client.get(arch_key)
 
-        # B7: Raise HTTPException 404 rather than returning a 200 text string
+        # B7: Raise SessionExpiredError 404 rather than returning a 200 text string
         if not arch_data:
-            raise HTTPException(
-                status_code=404,
-                detail="Session expired or architecture not found. Please start a new chat session.",
+            raise SessionExpiredError(
+                details={"session_id": session_id}
             )
 
         # 2. Fetch the Chat History
@@ -151,11 +151,13 @@ async def get_chat_response(user_id: str, session_id: str, user_question: str) -
     except Exception as e:
         run_id = str(generate_uuid())
         logger.error(
-            "Error during chat generation [run_id=%s]: %s", run_id, e, exc_info=True
+            "chat_generation_failed", run_id=run_id, exc_info=e
         )
-        raise HTTPException(
+        raise AppException(
             status_code=500,
-            detail=f"Internal error processing chat request (run_id: {run_id}): {str(e)}",
+            code="CHAT_EXECUTION_ERROR",
+            message=f"Internal error processing chat request (run_id: {run_id}): {str(e)}",
+            details={"run_id": run_id},
         ) from e
 
 
@@ -251,9 +253,11 @@ Do not include markdown code fences or explanations.
     except Exception as e:
         run_id = str(generate_uuid())
         logger.error(
-            "Diagram generation error [run_id=%s]: %s", run_id, e, exc_info=True
+            "diagram_generation_failed", run_id=run_id, exc_info=e
         )
-        raise HTTPException(
+        raise AppException(
             status_code=500,
-            detail=f"Failed to generate diagram (run_id: {run_id}): {str(e)}",
+            code="DIAGRAM_EXECUTION_ERROR",
+            message=f"Failed to generate diagram (run_id: {run_id}): {str(e)}",
+            details={"run_id": run_id},
         ) from e

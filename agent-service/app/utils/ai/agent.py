@@ -14,14 +14,17 @@ from google.adk.runners import Runner
 from google.adk.tools import FunctionTool, google_search
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
+import structlog
 
 from app.config.config import config
+from app.core.exceptions import AgentParsingError
+from app.core.logging import get_logger
 from app.schemas.architecture import ArchitectureData, ValidationVerdict
 from app.schemas.stream import StreamEvent, ResponseType
 from app.utils.uuid import generate_uuid
 from app.tools.mermaid import validate_mermaid_syntax
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # ── env/config ───────────────────────────────────────────────────────────────
 load_dotenv()
@@ -52,7 +55,7 @@ class PacedGemini(Gemini):
         if _last_llm_call_timestamp > 0 and elapsed < self.pacing_delay:
             wait_time = self.pacing_delay - elapsed
             logger.info(
-                "Pacing LLM call: waiting %.2fs to respect rate limits...", wait_time
+                "pacing_llm_call", wait_time_seconds=round(wait_time, 2)
             )
             await asyncio.sleep(wait_time)
         _last_llm_call_timestamp = time.monotonic()
@@ -361,7 +364,7 @@ def _extract_and_validate_architecture(
         if start_idx != -1 and end_idx != -1:
             raw_data = json.loads(final_output[start_idx : end_idx + 1])
         else:
-            raise ValueError(
+            raise AgentParsingError(
                 "Core framework error: Failed to extract architecture from agent state."
             )
 
@@ -373,7 +376,7 @@ def _extract_and_validate_architecture(
     elif isinstance(raw_data, str):
         arch_model = ArchitectureData.model_validate_json(raw_data)
     else:
-        raise ValueError(
+        raise AgentParsingError(
             f"Unexpected data type for final_architecture: {type(raw_data)}"
         )
 
@@ -388,7 +391,9 @@ def _extract_and_validate_architecture(
 async def run_architecture_generator(
     user_requirement: str, user_id: str
 ) -> str:
-    print("Initializing ADK Architecture Generator...")
+    run_id = str(generate_uuid())
+    structlog.contextvars.bind_contextvars(run_id=run_id, user_id=user_id)
+    logger.info("initializing_adk_runner", run_id=run_id, user_id=user_id)
 
     # 1. Initialize ADK's native session memory and execution engine
     session_service = InMemorySessionService()
@@ -403,9 +408,7 @@ async def run_architecture_generator(
         app_name="arch_generator", user_id=user_id
     )
 
-    print(
-        "\nAgents are collaborating... (This might take a minute as they loop and validate)"
-    )
+    logger.info("agents_collaborating", session_id=session.id)
 
     # 3. Format the user input natively
     message = types.Content(role="user", parts=[types.Part(text=user_requirement)])
@@ -443,6 +446,7 @@ async def run_architecture_generator_stream(
     user_requirement: str, user_id: str
 ) -> AsyncGenerator[str, None]:
     run_id = str(generate_uuid())
+    structlog.contextvars.bind_contextvars(run_id=run_id, user_id=user_id)
     start_time = time.time()
 
     def get_elapsed_ms() -> float:
@@ -489,6 +493,8 @@ async def run_architecture_generator_stream(
                 and agent_name != current_agent
             ):
                 current_agent = agent_name
+                structlog.contextvars.bind_contextvars(agent=current_agent, iteration=iteration)
+                logger.info("agent_transition", agent=current_agent, iteration=iteration)
                 yield StreamEvent(
                     run_id=run_id,
                     type=ResponseType.START,
@@ -607,13 +613,16 @@ async def run_architecture_generator_stream(
             user_friendly_error = (
                 "Rate limit exceeded (Free Tier 15 RPM quota). Please wait 30-60 seconds before retrying."
             )
+            error_code = "RATE_LIMIT_EXCEEDED"
         else:
             user_friendly_error = error_msg
+            error_code = "WORKFLOW_EXECUTION_ERROR"
 
         logger.error(
-            "Error during architecture generator stream [run_id=%s]: %s",
-            run_id,
-            e,
+            "stream_execution_failed",
+            run_id=run_id,
+            error_code=error_code,
+            error=str(e),
             exc_info=True,
         )
         yield StreamEvent(
@@ -621,6 +630,6 @@ async def run_architecture_generator_stream(
             type=ResponseType.ERROR,
             agent=current_agent,
             iteration=iteration,
-            data={"error": user_friendly_error, "run_id": run_id},
+            data={"error": user_friendly_error, "code": error_code, "run_id": run_id},
             timestamp=get_elapsed_ms(),
         ).to_sse()

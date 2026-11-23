@@ -1,16 +1,15 @@
 import json
-import logging
-
-from fastapi import HTTPException
 import httpx
 
 from app.config.config import config
 from app.config.redis import get_redis_client
+from app.core.exceptions import InvalidPayloadError
+from app.core.logging import get_logger
 from app.schemas.chat import ArchitectureData, GenerateDiagramRequest
 from app.utils.ai import chat_utils
 from app.utils.uuid import generate_uuid
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def get_chat_response(user_question: str, session_id: str, user_id: str):
@@ -96,9 +95,8 @@ async def _resolve_architecture_context(
     if request.context:
         return request.context
 
-    raise HTTPException(
-        status_code=400,
-        detail="Architecture context could not be resolved. Please provide a valid project_id, session_id, or context.",
+    raise InvalidPayloadError(
+        message="Architecture context could not be resolved. Please provide a valid project_id, session_id, or context."
     )
 
 

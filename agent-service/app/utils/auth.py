@@ -1,7 +1,8 @@
-from fastapi import Header, HTTPException
+from fastapi import Header
+from app.core.exceptions import UnauthorizedError
 
 
 def get_current_user_id(x_user_id: str = Header(None)):
     if not x_user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise UnauthorizedError()
     return x_user_id

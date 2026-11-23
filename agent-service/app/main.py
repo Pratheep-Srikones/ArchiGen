@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config.redis import close_redis, connect_redis
 from app.core.logging import get_logger, setup_logging
+from app.middleware.correlation import RequestLoggingMiddleware
 from app.routers.ai_routes import router as ai_router
 from app.routers.chat_routes import router as chat_router
 from app.routers.diagram_routes import router as diagram_router
@@ -34,6 +35,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+# Add RequestLoggingMiddleware to trace all incoming requests & bind contextvars
+app.add_middleware(RequestLoggingMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
